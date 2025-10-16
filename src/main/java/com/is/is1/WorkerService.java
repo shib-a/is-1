@@ -24,6 +24,15 @@ public class WorkerService {
     public List<Worker> findAll(){
         return em.createQuery("select w from Worker w", Worker.class).getResultList();
     }
+    public List<Worker> findAllPaged(int pageNumber, int pageSize) {
+        TypedQuery<Worker> query = em.createQuery("select w from Worker w", Worker.class);
+        query.setFirstResult((pageNumber - 1) * pageSize);
+        query.setMaxResults(pageSize);
+        return query.getResultList();
+    }
+    public long count(){
+        return em.createQuery("select count(w) from Worker w", Long.class).getSingleResult();
+    }
     public List<Worker> findAllByNameContainsSubstr(String substr){
         TypedQuery<Worker> query = em.createQuery("select w from Worker w where w.name like :substr", Worker.class);
         query.setParameter("substr", "%"+substr+"%");

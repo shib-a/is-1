@@ -1,5 +1,6 @@
 package com.is.is1;
 
+import com.is.is1.DTOs.GetRequestDTO;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -13,10 +14,19 @@ public class WorkerController {
     private WorkerService workerService;
     @Path("/add")
     @POST
-    public Response addWorker(WorkerDTO workerDTO){
-
+    public Response addWorker(Worker workerDTO){
+        workerService.save(workerDTO);
         return Response.ok().build();
     }
 
-    @Path("/setOrganization")
+    @Path("/getAll")
+    @GET
+    public Response getAllWorkers(GetRequestDTO getRequestDTO){
+        return Response.ok().entity(workerService.findAllPaged(getRequestDTO.getPageNumber(), getRequestDTO.getPageSize())).build();
+    }
+    @Path("/getTotalPages")
+    @GET
+    public Response getTotalPages(){
+        return Response.ok().entity(workerService.count()).build();
+    }
 }
