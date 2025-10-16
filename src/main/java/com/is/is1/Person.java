@@ -4,8 +4,10 @@ import jakarta.persistence.*;
 import jakarta.validation.Constraint;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
 
 @Embeddable
+@Data
 public class Person {
     @NotNull
     @Enumerated(EnumType.STRING)

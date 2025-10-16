@@ -1,5 +1,5 @@
 class Location {
-    constructor(x, y, z, name) {
+    constructor({x, y, z, name}) {
         this.x = x;
         this.y = y;
         this.z = z;

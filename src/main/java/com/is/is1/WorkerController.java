@@ -12,11 +12,13 @@ import jakarta.ws.rs.core.Response;
 public class WorkerController {
     @Inject
     private WorkerService workerService;
-    @Path("/add")
+
     @POST
+    @Path("/add")
     public Response addWorker(Worker workerDTO){
+        System.out.println(workerDTO.getCoordinates().toString());
         workerService.save(workerDTO);
-        return Response.ok().build();
+        return Response.ok().entity(workerDTO).build();
     }
 
     @Path("/getAll")
