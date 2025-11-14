@@ -1,0 +1,68 @@
+package com.is.is1.model;
+
+import jakarta.persistence.*;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
+import lombok.Data;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Date;
+
+@Entity
+@Table(name = "workers")
+@Data
+public class Worker {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotBlank(message = "Name cannot be empty")
+    @Column(nullable = false)
+    private String name;
+
+    @Embedded
+    @Valid
+    private Coordinates coordinates;
+
+    @Column(nullable = false, updatable = false)
+    private LocalDate creationDate;
+
+    @Positive(message = "Salary must be > 0")
+    @Column(nullable = false)
+    private double salary;
+
+    @NotNull(message = "Rating cannot be null")
+    @Positive(message = "Rating must be > 0")
+    @Column(nullable = false)
+    private Double rating;
+
+    @NotNull
+    @Column(nullable = false)
+    private LocalDate startDate;
+
+    @Temporal(TemporalType.DATE)
+    private Date endDate;
+
+    @Enumerated(EnumType.STRING)
+    private Position position;
+
+    // === Связи ===
+    @ManyToOne(optional = false,
+            cascade = {CascadeType.PERSIST, CascadeType.MERGE},
+            fetch = FetchType.LAZY)
+    @JoinColumn(name = "organization_id", nullable = false)
+    private Organization organization;
+
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, optional = true)
+    @JoinColumn(name = "person_id", unique = true)
+    private Person person;
+
+    // === Жизненный цикл ===
+    @PrePersist
+    private void onCreate() {
+        if (creationDate == null) {
+            creationDate = LocalDate.now();
+        }
+    }
+}

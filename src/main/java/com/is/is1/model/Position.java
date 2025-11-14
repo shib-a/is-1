@@ -1,4 +1,4 @@
-package com.is.is1;
+package com.is.is1.model;
 
 public enum Position {
     LABORER,

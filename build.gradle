@@ -14,8 +14,8 @@ ext {
   junitVersion = '5.9.2'
 }
 
-sourceCompatibility = '11'
-targetCompatibility = '11'
+sourceCompatibility = '17'
+targetCompatibility = '17'
 
 tasks.withType(JavaCompile) {
   options.encoding = 'UTF-8'
@@ -25,8 +25,13 @@ dependencies {
   implementation("org.postgresql:postgresql:42.7.8")
   compileOnly('jakarta.platform:jakarta.jakartaee-web-api:9.1.0')
   implementation('org.eclipse.persistence:org.eclipse.persistence.jpa:3.0.2')
-  implementation("org.eclipse.persistence:eclipselink:5.0.0-B10")
+  implementation("org.eclipse.persistence:eclipselink:4.0.4")
   compileOnly("org.projectlombok:lombok:1.18.42")
+  implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.2'
+  implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.2'
+  implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.17.2'
+  implementation 'com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider:2.17.2'
+  implementation 'com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-base:2.17.2'
   annotationProcessor("org.projectlombok:lombok:1.18.42")
 
   testCompileOnly("org.projectlombok:lombok:1.18.42")

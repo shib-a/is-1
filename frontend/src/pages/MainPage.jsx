@@ -1,4 +1,4 @@
-import React, {useRef, useState} from "react";
+import React, {useEffect, useState} from "react";
 import NestedTable from "../components/NestedTable";
 import Coordinates from "../classes/Coordinates";
 import Worker from "../classes/Worker";
@@ -10,21 +10,30 @@ import Country from "../classes/Country";
 import Address from "../classes/Address";
 import Location from "../classes/Location";
 import axios from "axios";
-import { Dialog, DialogTitle, DialogContent, Button, Table, TableHead, TableRow, TableCell, TableBody } from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, Button, Table, TableHead, TableRow, TableCell, TableBody, TextField, Select, MenuItem, Pagination } from "@mui/material";
 
 const MainPage = () => {
 
     const [workers, setWorkers] = useState([]);
-    const [page, setPage] = useState(0);
+    const [currentPage, setCurrentPage] = useState(1);
     const [loading, setLoading] = useState(false);
 
     const [data, setData] = useState(null);
     const [expandedRowId, setExpandedRowId] = useState(null);
-    const [open, setOpen] = useState(false);
     const [expandedField, setExpandedField] = useState(null);
     const [pageSize, setPageSize] = useState(10);
-    const [currentPage, setCurrentPage] = useState(null);
-    const [isAddActive, setIsAddActive] = useState(false);
+    const [totalPages, setTotalPages] = useState(1);
+    const [isAddOpen, setIsAddOpen] = useState(false);
+    const [isEditOpen, setIsEditOpen] = useState(false);
+    const [isViewOpen, setIsViewOpen] = useState(false);
+    const [selectedWorker, setSelectedWorker] = useState(null);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+    const [deleteId, setDeleteId] = useState(null);
+    const [isNameContainsOpen, setIsNameContainsOpen] = useState(false);
+    const [isNameStartsOpen, setIsNameStartsOpen] = useState(false);
+    const [isRatingLessOpen, setIsRatingLessOpen] = useState(false);
+    const [isHireOpen, setIsHireOpen] = useState(false);
+    const [isMoveOpen, setIsMoveOpen] = useState(false);
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
     const [currentCreatedWorker, setCurrentCreatedWorker] = useState(() =>  new Worker({
@@ -48,82 +57,371 @@ const MainPage = () => {
     const [isOrgCreationActive, setIsOrgCreationActive] = useState(false);
     const [isOrgAddressCreationActive, setIsOrgAddressCreationActive] = useState(false);
     const [isOrgAddressLocationCreationActive, setIsOrgAddressLocationCreationActive] = useState(false);
+    const [editedId, setEditedId] = useState(null);
+    const [nameSubstring, setNameSubstring] = useState('');
+    const [ratingThreshold, setRatingThreshold] = useState(0);
+    const [hireWorkerId, setHireWorkerId] = useState(null);
+    const [hireOrgId, setHireOrgId] = useState(null);
+    const [moveWorkerId, setMoveWorkerId] = useState(null);
+    const [moveNewOrgId, setMoveNewOrgId] = useState(null);
+    const [searchType, setSearchType] = useState(null);
+    const [searchParam, setSearchParam] = useState(null);
+    const [isSubViewOpen, setIsSubViewOpen] = useState(false);
+    const [subViewData, setSubViewData] = useState(null);
+    const [subViewField, setSubViewField] = useState(null);
 
-    const handleAdd = () => {
-        setIsAddActive(!isAddActive);
-        console.log(currentCreatedWorker);
-    }
+    const handleAddOpen = () => {
+        setCurrentCreatedWorker(new Worker({
+            name: "",
+            creationDate: null,
+            endDate: null,
+            salary: null,
+            rating: null,
+            startDate: null,
+            organization: new Organization({
+                officialAddress: new Address({
+                    town: new Location({x:null, y:null, z:null, name:null})
+                })
+            }),
+            coordinates: new Coordinates({x: null, y: null}),
+            person: new Person({location: new Location({})}),
+        }));
+        setStartDate(null);
+        setEndDate(null);
+        setIsAddOpen(true);
+    };
 
     const handleAddConfirm = async () => {
-        currentCreatedWorker.startDate = new Date(startDate);
-        currentCreatedWorker.endDate = new Date(endDate);
+        currentCreatedWorker.startDate = startDate ? new Date(startDate) : null;
+        currentCreatedWorker.endDate = endDate ? new Date(endDate) : null;
         await axios.post(
             "http://localhost:8081/is-1-1.0-SNAPSHOT/workers/add",
             currentCreatedWorker
         )
             .then(response =>{
                 console.log(response);
+                setIsAddOpen(false);
+                fetchData(currentPage);
             })
             .catch(err =>{
 
             })
     }
 
-    const fetchWorkers = async () => {
-        setLoading(true);
-            await axios.post(`http://localhost:8081/is-1-1.0-SNAPSHOT/workers?page=${page}&size=${pageSize}`)
-            .then(response =>{
-
-            })
-                .catch(err => {
-
-                })
-            const data = await response.json();
-            setWorkers(data);
-            setLoading(false);
+    const handleEdit = (row) => {
+        setCurrentCreatedWorker(new Worker(row));
+        setStartDate(row.startDate ? row.startDate.split('T')[0] : null);
+        setEndDate(row.endDate ? row.endDate.split('T')[0] : null);
+        setEditedId(row.id);
+        setIsEditOpen(true);
     };
 
-    // Fetch data when component mounts or page changes
-    useEffect(() => {
-        fetchWorkers();
-    }, [page]);
+    const handleEditConfirm = async () => {
+        currentCreatedWorker.startDate = startDate ? new Date(startDate) : null;
+        currentCreatedWorker.endDate = endDate ? new Date(endDate) : null;
+        await axios.put(
+            `http://localhost:8081/is-1-1.0-SNAPSHOT/workers/edit`,
+    currentCreatedWorker
+)
+.then(response => {
+    console.log(response);
+    setIsEditOpen(false);
+    fetchData(currentPage);
+})
+    .catch(err => {
 
-    // Periodically refresh every 10 seconds
-    useEffect(() => {
-        const intervalId = setInterval(() => {
-            fetchWorkers();
-        }, 10000); // 10 seconds
-        return () => clearInterval(intervalId);
-    }, [page]);
+    })
+};
 
-    const handleExpand = (rowId, fieldName) => {
-        if (expandedRowId === rowId && expandedField === fieldName) {
-            setExpandedRowId(null);
-            setExpandedField(null);
-        } else {
-            setExpandedRowId(rowId);
-            setExpandedField(fieldName);
-        }
-    };
+const handleView = async (id) => {
+    await axios.get(`http://localhost:8081/is-1-1.0-SNAPSHOT/workers/${id}`)
+        .then(response => {
+            setSelectedWorker(response.data);
+            setIsViewOpen(true);
+        })
+        .catch(err => {
+            console.error(err);
+        });
+};
 
-    const setAndGet = (object, field, set) => {
-        object[field] = set;
-        return object;
+const handleDelete = (id) => {
+    setDeleteId(id);
+    setIsDeleteConfirmOpen(true);
+};
+
+const handleDeleteConfirm = async () => {
+    await axios.delete(`http://localhost:8081/is-1-1.0-SNAPSHOT/workers/delete?id=${deleteId}`)
+        .then(response => {
+            console.log(response);
+            setIsDeleteConfirmOpen(false);
+            fetchData(currentPage);
+        })
+        .catch(err => {
+            console.error(err);
+        });
+};
+
+const handleNameContainsConfirm = async () => {
+    setSearchType('name-contains');
+    setSearchParam(nameSubstring);
+    setCurrentPage(1);
+    setIsNameContainsOpen(false);
+};
+
+const handleNameStartsConfirm = async () => {
+    setSearchType('name-starts');
+    setSearchParam(nameSubstring);
+    setCurrentPage(1);
+    setIsNameStartsOpen(false);
+};
+
+const handleRatingLessConfirm = async () => {
+    setSearchType('rating-less');
+    setSearchParam(ratingThreshold);
+    setCurrentPage(1);
+    setIsRatingLessOpen(false);
+};
+
+const handleReset = () => {
+    setSearchType(null);
+    setSearchParam(null);
+    setCurrentPage(1);
+};
+
+const handleHireConfirm = async () => {
+    await axios.post(
+        `http://localhost:8081/is-1-1.0-SNAPSHOT/workers/hire`,
+        {},
+        { params: { workerId: hireWorkerId, organizationId: hireOrgId } }
+    )
+        .then(response => {
+            console.log(response);
+            setIsHireOpen(false);
+            fetchData(currentPage);
+        })
+        .catch(err => {
+
+        });
+};
+
+const handleMoveConfirm = async () => {
+    await axios.post(
+        `http://localhost:8081/is-1-1.0-SNAPSHOT/workers/move`,
+        {},
+        { params: { workerId: moveWorkerId, newOrganizationId: moveNewOrgId } }
+    )
+        .then(response => {
+            console.log(response);
+            setIsMoveOpen(false);
+            fetchData(currentPage);
+        })
+        .catch(err => {
+
+        });
+};
+
+const fetchData = async (page) => {
+    setLoading(true);
+    let url = `http://localhost:8081/is-1-1.0-SNAPSHOT/workers/get?page=${page}&size=${pageSize}`;
+    if (searchType === 'name-contains') {
+        url = `http://localhost:8081/is-1-1.0-SNAPSHOT/workers/name-contains?substring=${searchParam}&page=${page}&size=${pageSize}`;
+    } else if (searchType === 'name-starts') {
+        url = `http://localhost:8081/is-1-1.0-SNAPSHOT/workers/name-starts?substring=${searchParam}&page=${page}&size=${pageSize}`;
+    } else if (searchType === 'rating-less') {
+        url = `http://localhost:8081/is-1-1.0-SNAPSHOT/workers/rating-less?rating=${searchParam}&page=${page}&size=${pageSize}`;
     }
+    await axios.get(url)
+        .then(response =>{
+            setData(response.data);
+            setLoading(false);
+        })
+        .catch(err => {
 
-    return (
+        })
+};
+
+const fetchCount = async () => {
+    let url = `http://localhost:8081/is-1-1.0-SNAPSHOT/workers/getTotalPages`;
+    if (searchType === 'name-contains') {
+        url = `http://localhost:8081/is-1-1.0-SNAPSHOT/workers/name-contains/count?substring=${searchParam}`;
+    } else if (searchType === 'name-starts') {
+        url = `http://localhost:8081/is-1-1.0-SNAPSHOT/workers/name-starts/count?substring=${searchParam}`;
+    } else if (searchType === 'rating-less') {
+        url = `http://localhost:8081/is-1-1.0-SNAPSHOT/workers/rating-less/count?rating=${searchParam}`;
+    }
+    await axios.get(url)
+        .then(response => {
+            const count = response.data;
+            setTotalPages(Math.ceil(count / pageSize));
+        })
+        .catch(err => {
+
+        });
+};
+
+// Fetch data when component mounts or dependencies change
+useEffect(() => {
+    fetchData(currentPage);
+    fetchCount();
+}, [currentPage, searchType, searchParam, pageSize]);
+
+// Periodically refresh every 10 seconds
+useEffect(() => {
+    const intervalId = setInterval(() => {
+        fetchData(currentPage);
+    }, 10000); // 10 seconds
+    return () => clearInterval(intervalId);
+}, [currentPage]);
+
+const handleSubView = (row, fieldName) => {
+    setSubViewData(row[fieldName]);
+    setSubViewField(fieldName);
+    setIsSubViewOpen(true);
+};
+
+const handlePageChange = (event, value) => {
+    setCurrentPage(value);
+};
+
+const renderSubViewContent = () => {
+    if (!subViewData) return null;
+
+    if (subViewField === 'coordinates') {
+        return (
+            <Table>
+                <TableHead>
+                    <TableRow>
+                        <TableCell>x</TableCell>
+                        <TableCell>y</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    <TableRow>
+                        <TableCell>{subViewData.x}</TableCell>
+                        <TableCell>{subViewData.y}</TableCell>
+                    </TableRow>
+                </TableBody>
+            </Table>
+        );
+    } else if (subViewField === 'organization') {
+        return (
+            <>
+                <Table>
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>Annual Turnover</TableCell>
+                            <TableCell>Employee Count</TableCell>
+                            <TableCell>Full Name</TableCell>
+                            <TableCell>Rating</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        <TableRow>
+                            <TableCell>{subViewData.annualTurnover}</TableCell>
+                            <TableCell>{subViewData.employeesCount}</TableCell>
+                            <TableCell>{subViewData.fullName}</TableCell>
+                            <TableCell>{subViewData.rating}</TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
+                <DialogTitle>Official Address</DialogTitle>
+                <Table>
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>Street</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        <TableRow>
+                            <TableCell>{subViewData.officialAddress.street}</TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
+                <DialogTitle>Town</DialogTitle>
+                <Table>
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>x</TableCell>
+                            <TableCell>y</TableCell>
+                            <TableCell>z</TableCell>
+                            <TableCell>Name</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        <TableRow>
+                            <TableCell>{subViewData.officialAddress.town.x}</TableCell>
+                            <TableCell>{subViewData.officialAddress.town.y}</TableCell>
+                            <TableCell>{subViewData.officialAddress.town.z}</TableCell>
+                            <TableCell>{subViewData.officialAddress.town.name}</TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
+            </>
+        );
+    } else if (subViewField === 'person') {
+        return (
+            <>
+                <Table>
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>Eye Color</TableCell>
+                            <TableCell>Hair Color</TableCell>
+                            <TableCell>Height</TableCell>
+                            <TableCell>Passport ID</TableCell>
+                            <TableCell>Nationality</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        <TableRow>
+                            <TableCell>{subViewData.eyeColor}</TableCell>
+                            <TableCell>{subViewData.hairColor}</TableCell>
+                            <TableCell>{subViewData.height}</TableCell>
+                            <TableCell>{subViewData.passportID}</TableCell>
+                            <TableCell>{subViewData.nationality}</TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
+                <DialogTitle>Location</DialogTitle>
+                <Table>
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>x</TableCell>
+                            <TableCell>y</TableCell>
+                            <TableCell>z</TableCell>
+                            <TableCell>Name</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        <TableRow>
+                            <TableCell>{subViewData.location.x}</TableCell>
+                            <TableCell>{subViewData.location.y}</TableCell>
+                            <TableCell>{subViewData.location.z}</TableCell>
+                            <TableCell>{subViewData.location.name}</TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
+            </>
+        );
+    }
+    return null;
+};
+
+return (
     <div>
         <div className="mainContainer">
-            <button className="addButton" onClick={handleAdd}>Add</button>
+            <button className="addButton" onClick={handleAddOpen}>Add Worker</button>
+            <button onClick={() => setIsNameContainsOpen(true)}>Search Name Contains</button>
+            <button onClick={() => setIsNameStartsOpen(true)}>Search Name Starts With</button>
+            <button onClick={() => setIsRatingLessOpen(true)}>Search Rating Less Than</button>
+            <button onClick={() => setIsHireOpen(true)}>Hire Worker</button>
+            <button onClick={() => setIsMoveOpen(true)}>Move Worker</button>
+            <button onClick={handleReset}>Reset Search</button>
 
             <table className="mainTable">
                 <thead>
-                {isAddActive ? (null) :(
-                <th>ID</th>)}
+                <th>ID</th>
                 <th>Name</th>
                 <th>Coordinates</th>
-                {isAddActive ? (null) : (
-                    <th>Creation Date</th>)}
                 <th>Organization</th>
                 <th>Salary</th>
                 <th>Rating</th>
@@ -131,298 +429,675 @@ const MainPage = () => {
                 <th>End Date</th>
                 <th>Position</th>
                 <th>Person</th>
+                <th>Creation Date</th>
+                <th>Actions</th>
                 </thead>
-                {isAddActive ? (
-                    <tbody>
-                        <tr>
-                            <td><input type={"text"} value={currentCreatedWorker.name} onChange={(e) => {
-                                setCurrentCreatedWorker(prev => new Worker({
-                                    ...prev,
-                                    name: e.target.value
-                                }));
-                            }}/></td>
-                            <td onClick={(e) => setIsCoordCreationActive(true)}>[configure]</td>
-                            <td onClick={(e) => setIsOrgCreationActive(!isOrgCreationActive)}>[configure]</td>
-                            <td><input type={"number"} value={currentCreatedWorker.salary} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                ...prev,
-                                salary: e.target.value
-                            }))}/></td>
-                            <td><input type={"number"} value={currentCreatedWorker.rating} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                ...prev,
-                                rating: e.target.value
-                            }))}/></td>
-                            <td><input type={"date"} value={startDate} placeholder={"0.."} onChange={(e) => setStartDate(e.target.value)}/></td>
-                            <td><input type={"date"} value={endDate} placeholder={"0..."} onChange={(e) => setEndDate(e.target.value)}/></td>
-                            <td><select name="positions" value={currentCreatedWorker.position}  className="positionSelect" onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                ...prev,
-                                position: e.target.value
-                            }))}>
-                                <option value="">--Please choose an option--</option>
-                                <option value={Position.LABORER}>Laborer</option>
-                                <option value={Position.HEAD_OF_DEPARTMENT}>Head of Dept.</option>
-                                <option value={Position.HUMAN_RESOURCES}>HR</option>
-                            </select></td>
-                            <td onClick={(e) => setIsPersonCreationActive(!isPersonCreationActive)}>[configure]</td>
-                        </tr>
-                        {isCoordCreationActive ? (
-                            <Dialog open={isCoordCreationActive} onClose={() => setIsCoordCreationActive(false)} fullWidth maxWidth="sm">
-                                <DialogTitle>Worker Coordinates</DialogTitle>
-                                <DialogContent>
-                            <tbody>
-                            <th>x</th>
-                            <th>y</th>
-                            <tr>
-                                <td><input type={"number"} value={currentCreatedWorker.coordinates.x} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                    ...prev,
-                                    coordinates: new Coordinates({...prev.coordinates, x: Number(e.target.value)})
-                                }))}/></td>
-                                <td><input type={"number"} value={currentCreatedWorker.coordinates.y} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                    ...prev,
-                                    coordinates: new Coordinates({...prev.coordinates, y: Number(e.target.value)})
-                                }))}/></td>
-
-                            </tr>
-                        </tbody>
-                                </DialogContent>
-                            </Dialog>
-                    ) : (null)}
-
-
-                        {isOrgCreationActive ? (
-                            <Dialog open={isOrgCreationActive} onClose={() => setIsOrgCreationActive(false)} fullWidth maxWidth="sm">
-                                <DialogTitle>Organization</DialogTitle>
-                                <DialogContent>
-                            <tbody>
-                                <th>Official Address</th>
-                                <th>Annual Turnover</th>
-                                <th>Employee Count</th>
-                                <th>Full Name</th>
-                                <th>Rating</th>
-                                <tr>
-                                    <td onClick={(e) => setIsOrgAddressCreationActive(!isOrgAddressCreationActive)}>[configure]</td>
-                                    {isOrgAddressCreationActive? (
-                                        <Dialog open={isOrgAddressCreationActive} onClose={() => setIsOrgAddressCreationActive(false)} fullWidth maxWidth="sm">
-                                            <DialogTitle>Organization Address</DialogTitle>
-                                            <DialogContent>
-                                        <tbody>
-                                            <th>Street</th>
-                                            <th>Town</th>
-                                            <tr>
-                                                <td><input type={"text"} value={currentCreatedWorker.organization.officialAddress.street} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                                    ...prev,
-                                                    organization: new Organization({...prev.organization, officialAddress: new Address({...prev.organization.officialAddress, street:e.target.value})})
-                                                }))}/></td>
-                                                <td onClick={(e) => setIsOrgAddressLocationCreationActive((!isOrgAddressLocationCreationActive))}>[configure]</td>
-                                            </tr>
-                                            {isOrgAddressLocationCreationActive ? (
-                                                <Dialog open={isOrgAddressLocationCreationActive} onClose={() => setIsOrgAddressLocationCreationActive(false)} fullWidth maxWidth="sm">
-                                                    <DialogTitle>Organization Town</DialogTitle>
-                                                    <DialogContent>
-                                                <tbody>
-                                                    <th>x</th>
-                                                    <th>y</th>
-                                                    <th>z</th>
-                                                    <th>Name</th>
-                                                    <tr>
-                                                        <td><input type={"number"} value={currentCreatedWorker.organization.officialAddress.town.x} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                                            ...prev,
-                                                            organization: new Organization({...prev.organization, officialAddress: new Address({...prev.organization.officialAddress, town:new Location({
-                                                                        ...prev.organization.officialAddress.town,
-                                                                        x: e.target.value
-                                                                    })})})
-                                                        }))}/></td>
-                                                        <td><input type={"number"} value={currentCreatedWorker.organization.officialAddress.town.y} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                                            ...prev,
-                                                            organization: new Organization({...prev.organization, officialAddress: new Address({...prev.organization.officialAddress, town:new Location({
-                                                                        ...prev.organization.officialAddress.town,
-                                                                        y: e.target.value
-                                                                    })})})
-                                                        }))}/></td>
-                                                        <td><input type={"number"} value={currentCreatedWorker.organization.officialAddress.town.z} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                                            ...prev,
-                                                            organization: new Organization({...prev.organization, officialAddress: new Address({...prev.organization.officialAddress, town:new Location({
-                                                                        ...prev.organization.officialAddress.town,
-                                                                        z: e.target.value
-                                                                    })})})
-                                                        }))}/></td>
-                                                        <td><input type={"text"} value={currentCreatedWorker.organization.officialAddress.town.name} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                                            ...prev,
-                                                            organization: new Organization({...prev.organization, officialAddress: new Address({...prev.organization.officialAddress, town:new Location({
-                                                                        ...prev.organization.officialAddress.town,
-                                                                        name: e.target.value
-                                                                    })})})
-                                                        }))}/></td>
-                                                    </tr>
-                                                </tbody>
-                                                    </DialogContent>
-                                                </Dialog>
-
-                                            ) : (null)}
-                                        </tbody>
-                                            </DialogContent>
-                                        </Dialog>
-                                    ) : (null)}
-                                    <td><input type={"number"} value={currentCreatedWorker.organization.annualTurnover} placeholder={"0..."}
-                                               onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                                   ...prev,
-                                                   organization: new Organization({...prev.organization, annualTurnover: e.target.value})}))}/>
-                                    </td>
-                                    <td><input type={"number"} value={currentCreatedWorker.organization.employeesCount} placeholder={"0..."}
-                                               onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                                   ...prev,
-                                                   organization: new Organization({...prev.organization, employeesCount: e.target.value})}))}/>
-                                    </td>
-                                    <td><input type={"text"} value={currentCreatedWorker.organization.fullName} placeholder={"OOO..."}
-                                               onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                                   ...prev,
-                                                   organization: new Organization({...prev.organization, fullName: e.target.value})}))}/>
-                                    </td>
-                                    <td><input type={"number"} value={currentCreatedWorker.organization.rating} placeholder={"0..."}
-                                               onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                                   ...prev,
-                                                   organization: new Organization({...prev.organization, rating: e.target.value})}))}/>
-                                    </td>
-                                </tr>
-                            </tbody>
-                                </DialogContent>
-                            </Dialog>
-                        ) : (null)}
-
-
-                        {isPersonCreationActive ? (
-                            <Dialog open={isPersonCreationActive} onClose={() => setIsPersonCreationActive(false)} fullWidth maxWidth="sm">
-                                <DialogTitle>Person</DialogTitle>
-                                <DialogContent>
-                            <tbody>
-                                <th>Eye Color</th>
-                                <th>Hair Color</th>
-                                <th>Location</th>
-                                <th>Height</th>
-                                <th>Passport ID</th>
-                                <th>Nationality</th>
-                                <tr>
-                                    <td><select name="color" value={currentCreatedWorker.person.eyeColor}  className="colorSelect" onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                        ...prev,
-                                        person: new Person({...prev.person, eyeColor: e.target.value})}))}>
-                                        <option value="">--Please choose an option--</option>
-                                        <option value={Color.RED}>Red</option>
-                                        <option value={Color.BLACK}>Black</option>
-                                        <option value={Color.WHITE}>White</option>
-                                        <option value={Color.ORANGE}>Orange</option>
-                                        <option value={Color.YELLOW}>Yellow</option>
-                                    </select></td>
-                                    <td><select name="color" value={currentCreatedWorker.person.hairColor} className="colorSelect" onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                        ...prev,
-                                        person: new Person({...prev.person, hairColor: e.target.value})}))}>
-                                        <option value="">--Please choose an option--</option>
-                                        <option value={Color.RED}>Red</option>
-                                        <option value={Color.BLACK}>Black</option>
-                                        <option value={Color.WHITE}>White</option>
-                                        <option value={Color.ORANGE}>Orange</option>
-                                        <option value={Color.YELLOW}>Yellow</option>
-                                    </select></td>
-                                    <td onClick={(e) => setIsPersonLocationCreationActive(!isPersonLocationCreationActive)}>[configure]</td>
-
-                                    <td><input type={"number"} value={currentCreatedWorker.person.height} placeholder={"OOO..."}
-                                               onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                                   ...prev,
-                                                   person: new Person({...prev.person, height: e.target.value})}))}/>
-                                    </td>
-                                    <td><input type={"text"} value={currentCreatedWorker.person.passportID} placeholder={"0..."}
-                                               onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                                   ...prev,
-                                                   person: new Person({...prev.person, passportID: e.target.value})}))}/>
-                                    </td>
-                                    <td><select name="color" value={currentCreatedWorker.person.nationality} className="colorSelect" onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                        ...prev,
-                                        person: new Person({...prev.person, nationality: e.target.value})}))}>
-                                        <option value="">--Please choose an option--</option>
-                                        <option value={Country.RUSSIA}>Russia</option>
-                                        <option value={Country.UNITED_KINGDOM}>UK</option>
-                                        <option value={Country.FRANCE}>France</option>
-                                        <option value={Country.INDIA}>India</option>
-                                        <option value={Country.THAILAND}>Thailand</option>
-                                    </select></td>
-                                    {isPersonLocationCreationActive ? (
-                                        <Dialog open={isPersonLocationCreationActive} onClose={() => setIsPersonLocationCreationActive(false)} fullWidth maxWidth="sm">
-                                            <DialogTitle>Person Location</DialogTitle>
-                                            <DialogContent>
-                                    <tbody>
-                                        <th>x</th>
-                                        <th>y</th>
-                                        <th>z</th>
-                                        <th>Name</th>
-                                        <tr>
-                                            <td><input type={"number"} value={currentCreatedWorker.person.location.x} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                                ...prev,
-                                                person: new Person({...prev.person, location: new Location({...prev.person.location, x: e.target.value
-                                                        })})
-                                            }))}/></td>
-                                            <td><input type={"number"} value={currentCreatedWorker.person.location.y} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                                ...prev,
-                                                person: new Person({...prev.person, location: new Location({...prev.person.location, y: e.target.value
-                                                    })})
-                                            }))}/></td>
-                                            <td><input type={"number"} value={currentCreatedWorker.person.location.z} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                                ...prev,
-                                                person: new Person({...prev.person, location: new Location({...prev.person.location, z: e.target.value
-                                                    })})
-                                            }))}/></td>
-                                            <td><input type={"text"} value={currentCreatedWorker.person.location.name} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
-                                                ...prev,
-                                                person: new Person({...prev.person, location: new Location({...prev.person.location, name: e.target.value
-                                                    })})
-                                            }))}/></td>
-                                        </tr>
-                                    </tbody>
-                                        </DialogContent>
-                                        </Dialog>
-                                ) : (null)}
-                                </tr>
-                            </tbody>
-                                </DialogContent>
-                            </Dialog>
-                        ) : (null)}
-                        <button type={"button"} onClick={handleAddConfirm}>Confirm</button>
-                    </tbody>
-
-                ) : (null)}
-
                 {data != null ? (
                     <tbody>
                     {data.map((row) => (
                         <React.Fragment key={row.id}>
-                        <tr>
-                            <td>{row.id}</td>
-                            <td>{row.name}</td>
-                            <td>{row.organization}</td>
-                            <td
-                                style={{cursor: 'pointer', color: 'blue'}}
-                                onClick={() => handleExpand(row.id, 'address')}
-                            >
-                                [Click to view]
-                            </td>
-                            <td
-                                style={{cursor: 'pointer', color: 'blue'}}
-                                onClick={() => handleExpand(row.id, 'orders')}
-                            >
-                                [Click to view]
-                            </td>
-                        </tr>
-                        {expandedRowId === row.id && expandedField && (
                             <tr>
-                                <td colSpan="5">
-                                    <NestedTable data={row[expandedField]} field={expandedField} />
+                                <td>{row.id}</td>
+                                <td>{row.name}</td>
+                                <td
+                                    style={{cursor: 'pointer', color: 'blue'}}
+                                    onClick={() => handleSubView(row, 'coordinates')}
+                                >
+                                    [Click to view]
+                                </td>
+                                <td
+                                    style={{cursor: 'pointer', color: 'blue'}}
+                                    onClick={() => handleSubView(row, 'organization')}
+                                >
+                                    [Click to view]
+                                </td>
+                                <td>{row.salary}</td>
+                                <td>{row.rating}</td>
+                                <td>{row.startDate}</td>
+                                <td>{row.endDate}</td>
+                                <td>{row.position}</td>
+                                <td
+                                    style={{cursor: 'pointer', color: 'blue'}}
+                                    onClick={() => handleSubView(row, 'person')}
+                                >
+                                    [Click to view]
+                                </td>
+                                <td>{row.creationDate}</td>
+                                <td>
+                                    <button onClick={() => handleView(row.id)}>View</button>
+                                    <button onClick={() => handleEdit(row)}>Edit</button>
+                                    <button onClick={() => handleDelete(row.id)}>Delete</button>
                                 </td>
                             </tr>
-                        )}
-                    </React.Fragment>
-                ))}
-                </tbody>
+                        </React.Fragment>
+                    ))}
+                    </tbody>
 
-                    ):(<div/>)}
+                ):(<div/>)}
             </table>
+            <Pagination count={totalPages} page={currentPage} onChange={handlePageChange} />
         </div>
+        {isCoordCreationActive && (
+            <Dialog open={isCoordCreationActive} onClose={() => setIsCoordCreationActive(false)} fullWidth maxWidth="sm">
+                <DialogTitle>Worker Coordinates</DialogTitle>
+                <DialogContent>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>x</TableCell>
+                                <TableCell>y</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell><input type={"number"} value={currentCreatedWorker.coordinates.x} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                    ...prev,
+                                    coordinates: new Coordinates({...prev.coordinates, x: Number(e.target.value)})
+                                }))}/></TableCell>
+                                <TableCell><input type={"number"} value={currentCreatedWorker.coordinates.y} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                    ...prev,
+                                    coordinates: new Coordinates({...prev.coordinates, y: Number(e.target.value)})
+                                }))}/></TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </DialogContent>
+            </Dialog>
+        )}
+        {isOrgCreationActive && (
+            <Dialog open={isOrgCreationActive} onClose={() => setIsOrgCreationActive(false)} fullWidth maxWidth="sm">
+                <DialogTitle>Organization</DialogTitle>
+                <DialogContent>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Official Address</TableCell>
+                                <TableCell>Annual Turnover</TableCell>
+                                <TableCell>Employee Count</TableCell>
+                                <TableCell>Full Name</TableCell>
+                                <TableCell>Rating</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell onClick={(e) => setIsOrgAddressCreationActive(!isOrgAddressCreationActive)}>[configure]</TableCell>
+                                <TableCell><input type={"number"} value={currentCreatedWorker.organization.annualTurnover} placeholder={"0..."}
+                                                  onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                                      ...prev,
+                                                      organization: new Organization({...prev.organization, annualTurnover: e.target.value})}))}/>
+                                </TableCell>
+                                <TableCell><input type={"number"} value={currentCreatedWorker.organization.employeesCount} placeholder={"0..."}
+                                                  onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                                      ...prev,
+                                                      organization: new Organization({...prev.organization, employeesCount: e.target.value})}))}/>
+                                </TableCell>
+                                <TableCell><input type={"text"} value={currentCreatedWorker.organization.fullName} placeholder={"OOO..."}
+                                                  onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                                      ...prev,
+                                                      organization: new Organization({...prev.organization, fullName: e.target.value})}))}/>
+                                </TableCell>
+                                <TableCell><input type={"number"} value={currentCreatedWorker.organization.rating} placeholder={"0..."}
+                                                  onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                                      ...prev,
+                                                      organization: new Organization({...prev.organization, rating: e.target.value})}))}/>
+                                </TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </DialogContent>
+            </Dialog>
+        )}
+        {isOrgAddressCreationActive && (
+            <Dialog open={isOrgAddressCreationActive} onClose={() => setIsOrgAddressCreationActive(false)} fullWidth maxWidth="sm">
+                <DialogTitle>Organization Address</DialogTitle>
+                <DialogContent>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Street</TableCell>
+                                <TableCell>Town</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell><input type={"text"} value={currentCreatedWorker.organization.officialAddress.street} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                    ...prev,
+                                    organization: new Organization({...prev.organization, officialAddress: new Address({...prev.organization.officialAddress, street:e.target.value})})
+                                }))}/></TableCell>
+                                <TableCell onClick={(e) => setIsOrgAddressLocationCreationActive((!isOrgAddressLocationCreationActive))}>[configure]</TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </DialogContent>
+            </Dialog>
+        )}
+        {isOrgAddressLocationCreationActive && (
+            <Dialog open={isOrgAddressLocationCreationActive} onClose={() => setIsOrgAddressLocationCreationActive(false)} fullWidth maxWidth="sm">
+                <DialogTitle>Organization Town</DialogTitle>
+                <DialogContent>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>x</TableCell>
+                                <TableCell>y</TableCell>
+                                <TableCell>z</TableCell>
+                                <TableCell>Name</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell><input type={"number"} value={currentCreatedWorker.organization.officialAddress.town.x} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                    ...prev,
+                                    organization: new Organization({...prev.organization, officialAddress: new Address({...prev.organization.officialAddress, town:new Location({
+                                                ...prev.organization.officialAddress.town,
+                                                x: e.target.value
+                                            })})})
+                                }))}/></TableCell>
+                                <TableCell><input type={"number"} value={currentCreatedWorker.organization.officialAddress.town.y} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                    ...prev,
+                                    organization: new Organization({...prev.organization, officialAddress: new Address({...prev.organization.officialAddress, town:new Location({
+                                                ...prev.organization.officialAddress.town,
+                                                y: e.target.value
+                                            })})})
+                                }))}/></TableCell>
+                                <TableCell><input type={"number"} value={currentCreatedWorker.organization.officialAddress.town.z} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                    ...prev,
+                                    organization: new Organization({...prev.organization, officialAddress: new Address({...prev.organization.officialAddress, town:new Location({
+                                                ...prev.organization.officialAddress.town,
+                                                z: e.target.value
+                                            })})})
+                                }))}/></TableCell>
+                                <TableCell><input type={"text"} value={currentCreatedWorker.organization.officialAddress.town.name} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                    ...prev,
+                                    organization: new Organization({...prev.organization, officialAddress: new Address({...prev.organization.officialAddress, town:new Location({
+                                                ...prev.organization.officialAddress.town,
+                                                name: e.target.value
+                                            })})})
+                                }))}/></TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </DialogContent>
+            </Dialog>
+
+        )}
+        {isPersonCreationActive && (
+            <Dialog open={isPersonCreationActive} onClose={() => setIsPersonCreationActive(false)} fullWidth maxWidth="sm">
+                <DialogTitle>Person</DialogTitle>
+                <DialogContent>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Eye Color</TableCell>
+                                <TableCell>Hair Color</TableCell>
+                                <TableCell>Location</TableCell>
+                                <TableCell>Height</TableCell>
+                                <TableCell>Passport ID</TableCell>
+                                <TableCell>Nationality</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell><Select value={currentCreatedWorker.person.eyeColor} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                    ...prev,
+                                    person: new Person({...prev.person, eyeColor: e.target.value})}))}>
+                                    <MenuItem value="">--Please choose an option--</MenuItem>
+                                    <MenuItem value={Color.RED}>Red</MenuItem>
+                                    <MenuItem value={Color.BLACK}>Black</MenuItem>
+                                    <MenuItem value={Color.WHITE}>White</MenuItem>
+                                    <MenuItem value={Color.ORANGE}>Orange</MenuItem>
+                                    <MenuItem value={Color.YELLOW}>Yellow</MenuItem>
+                                </Select></TableCell>
+                                <TableCell><Select value={currentCreatedWorker.person.hairColor} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                    ...prev,
+                                    person: new Person({...prev.person, hairColor: e.target.value})}))}>
+                                    <MenuItem value="">--Please choose an option--</MenuItem>
+                                    <MenuItem value={Color.RED}>Red</MenuItem>
+                                    <MenuItem value={Color.BLACK}>Black</MenuItem>
+                                    <MenuItem value={Color.WHITE}>White</MenuItem>
+                                    <MenuItem value={Color.ORANGE}>Orange</MenuItem>
+                                    <MenuItem value={Color.YELLOW}>Yellow</MenuItem>
+                                </Select></TableCell>
+                                <TableCell onClick={(e) => setIsPersonLocationCreationActive(!isPersonLocationCreationActive)}>[configure]</TableCell>
+                                <TableCell><input type={"number"} value={currentCreatedWorker.person.height} placeholder={"OOO..."}
+                                                  onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                                      ...prev,
+                                                      person: new Person({...prev.person, height: e.target.value})}))}/>
+                                </TableCell>
+                                <TableCell><input type={"text"} value={currentCreatedWorker.person.passportID} placeholder={"0..."}
+                                                  onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                                      ...prev,
+                                                      person: new Person({...prev.person, passportID: e.target.value})}))}/>
+                                </TableCell>
+                                <TableCell><Select value={currentCreatedWorker.person.nationality} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                    ...prev,
+                                    person: new Person({...prev.person, nationality: e.target.value})}))}>
+                                    <MenuItem value="">--Please choose an option--</MenuItem>
+                                    <MenuItem value={Country.RUSSIA}>Russia</MenuItem>
+                                    <MenuItem value={Country.UNITED_KINGDOM}>UK</MenuItem>
+                                    <MenuItem value={Country.FRANCE}>France</MenuItem>
+                                    <MenuItem value={Country.INDIA}>India</MenuItem>
+                                    <MenuItem value={Country.THAILAND}>Thailand</MenuItem>
+                                </Select></TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </DialogContent>
+            </Dialog>
+        )}
+        {isPersonLocationCreationActive && (
+            <Dialog open={isPersonLocationCreationActive} onClose={() => setIsPersonLocationCreationActive(false)} fullWidth maxWidth="sm">
+                <DialogTitle>Person Location</DialogTitle>
+                <DialogContent>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>x</TableCell>
+                                <TableCell>y</TableCell>
+                                <TableCell>z</TableCell>
+                                <TableCell>Name</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell><input type={"number"} value={currentCreatedWorker.person.location.x} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                    ...prev,
+                                    person: new Person({...prev.person, location: new Location({...prev.person.location, x: e.target.value
+                                        })})
+                                }))}/></TableCell>
+                                <TableCell><input type={"number"} value={currentCreatedWorker.person.location.y} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                    ...prev,
+                                    person: new Person({...prev.person, location: new Location({...prev.person.location, y: e.target.value
+                                        })})
+                                }))}/></TableCell>
+                                <TableCell><input type={"number"} value={currentCreatedWorker.person.location.z} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                    ...prev,
+                                    person: new Person({...prev.person, location: new Location({...prev.person.location, z: e.target.value
+                                        })})
+                                }))}/></TableCell>
+                                <TableCell><input type={"text"} value={currentCreatedWorker.person.location.name} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                    ...prev,
+                                    person: new Person({...prev.person, location: new Location({...prev.person.location, name: e.target.value
+                                        })})
+                                }))}/></TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </DialogContent>
+            </Dialog>
+        )}
+        {isAddOpen && (
+            <Dialog open={isAddOpen} onClose={() => setIsAddOpen(false)} fullWidth maxWidth="md">
+                <DialogTitle>Add Worker</DialogTitle>
+                <DialogContent>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Name</TableCell>
+                                <TableCell>Coordinates</TableCell>
+                                <TableCell>Organization</TableCell>
+                                <TableCell>Salary</TableCell>
+                                <TableCell>Rating</TableCell>
+                                <TableCell>Start Date</TableCell>
+                                <TableCell>End Date</TableCell>
+                                <TableCell>Position</TableCell>
+                                <TableCell>Person</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell>
+                                    <input type={"text"} value={currentCreatedWorker.name} onChange={(e) => {
+                                        setCurrentCreatedWorker(prev => new Worker({
+                                            ...prev,
+                                            name: e.target.value
+                                        }));
+                                    }}/>
+                                </TableCell>
+                                <TableCell onClick={(e) => setIsCoordCreationActive(true)}>[configure]</TableCell>
+                                <TableCell onClick={(e) => setIsOrgCreationActive(true)}>[configure]</TableCell>
+                                <TableCell>
+                                    <input type={"number"} value={currentCreatedWorker.salary} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                        ...prev,
+                                        salary: e.target.value
+                                    }))}/>
+                                </TableCell>
+                                <TableCell>
+                                    <input type={"number"} value={currentCreatedWorker.rating} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                        ...prev,
+                                        rating: e.target.value
+                                    }))}/>
+                                </TableCell>
+                                <TableCell>
+                                    <input type={"date"} value={startDate} placeholder={"0.."} onChange={(e) => setStartDate(e.target.value)}/>
+                                </TableCell>
+                                <TableCell>
+                                    <input type={"date"} value={endDate} placeholder={"0..."} onChange={(e) => setEndDate(e.target.value)}/>
+                                </TableCell>
+                                <TableCell>
+                                    <select name="positions" value={currentCreatedWorker.position}  className="positionSelect" onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                        ...prev,
+                                        position: e.target.value
+                                    }))}>
+                                        <option value="">--Please choose an option--</option>
+                                        <option value={Position.LABORER}>Laborer</option>
+                                        <option value={Position.HEAD_OF_DEPARTMENT}>Head of Dept.</option>
+                                        <option value={Position.HUMAN_RESOURCES}>HR</option>
+                                    </select>
+                                </TableCell>
+                                <TableCell onClick={(e) => setIsPersonCreationActive(true)}>[configure]</TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </DialogContent>
+                <Button onClick={handleAddConfirm}>Confirm</Button>
+            </Dialog>
+        )}
+        {isEditOpen && (
+            <Dialog open={isEditOpen} onClose={() => setIsEditOpen(false)} fullWidth maxWidth="md">
+                <DialogTitle>Edit Worker</DialogTitle>
+                <DialogContent>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Name</TableCell>
+                                <TableCell>Coordinates</TableCell>
+                                <TableCell>Organization</TableCell>
+                                <TableCell>Salary</TableCell>
+                                <TableCell>Rating</TableCell>
+                                <TableCell>Start Date</TableCell>
+                                <TableCell>End Date</TableCell>
+                                <TableCell>Position</TableCell>
+                                <TableCell>Person</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell>
+                                    <input type={"text"} value={currentCreatedWorker.name} onChange={(e) => {
+                                        setCurrentCreatedWorker(prev => new Worker({
+                                            ...prev,
+                                            name: e.target.value
+                                        }));
+                                    }}/>
+                                </TableCell>
+                                <TableCell onClick={(e) => setIsCoordCreationActive(true)}>[configure]</TableCell>
+                                <TableCell onClick={(e) => setIsOrgCreationActive(true)}>[configure]</TableCell>
+                                <TableCell>
+                                    <input type={"number"} value={currentCreatedWorker.salary} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                        ...prev,
+                                        salary: e.target.value
+                                    }))}/>
+                                </TableCell>
+                                <TableCell>
+                                    <input type={"number"} value={currentCreatedWorker.rating} placeholder={"0..."} onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                        ...prev,
+                                        rating: e.target.value
+                                    }))}/>
+                                </TableCell>
+                                <TableCell>
+                                    <input type={"date"} value={startDate} placeholder={"0.."} onChange={(e) => setStartDate(e.target.value)}/>
+                                </TableCell>
+                                <TableCell>
+                                    <input type={"date"} value={endDate} placeholder={"0..."} onChange={(e) => setEndDate(e.target.value)}/>
+                                </TableCell>
+                                <TableCell>
+                                    <select name="positions" value={currentCreatedWorker.position}  className="positionSelect" onChange={(e) => setCurrentCreatedWorker(prev => new Worker({
+                                        ...prev,
+                                        position: e.target.value
+                                    }))}>
+                                        <option value="">--Please choose an option--</option>
+                                        <option value={Position.LABORER}>Laborer</option>
+                                        <option value={Position.HEAD_OF_DEPARTMENT}>Head of Dept.</option>
+                                        <option value={Position.HUMAN_RESOURCES}>HR</option>
+                                    </select>
+                                </TableCell>
+                                <TableCell onClick={(e) => setIsPersonCreationActive(true)}>[configure]</TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </DialogContent>
+                <Button onClick={handleEditConfirm}>Confirm</Button>
+            </Dialog>
+        )}
+        {isViewOpen && selectedWorker && (
+            <Dialog open={isViewOpen} onClose={() => setIsViewOpen(false)} fullWidth maxWidth="md">
+                <DialogTitle>Worker Details</DialogTitle>
+                <DialogContent>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>ID</TableCell>
+                                <TableCell>Name</TableCell>
+                                <TableCell>Salary</TableCell>
+                                <TableCell>Rating</TableCell>
+                                <TableCell>Start Date</TableCell>
+                                <TableCell>End Date</TableCell>
+                                <TableCell>Position</TableCell>
+                                <TableCell>Creation Date</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell>{selectedWorker.id}</TableCell>
+                                <TableCell>{selectedWorker.name}</TableCell>
+                                <TableCell>{selectedWorker.salary}</TableCell>
+                                <TableCell>{selectedWorker.rating}</TableCell>
+                                <TableCell>{selectedWorker.startDate}</TableCell>
+                                <TableCell>{selectedWorker.endDate}</TableCell>
+                                <TableCell>{selectedWorker.position}</TableCell>
+                                <TableCell>{selectedWorker.creationDate}</TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                    <DialogTitle>Coordinates</DialogTitle>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>x</TableCell>
+                                <TableCell>y</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell>{selectedWorker.coordinates.x}</TableCell>
+                                <TableCell>{selectedWorker.coordinates.y}</TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                    <DialogTitle>Organization</DialogTitle>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Annual Turnover</TableCell>
+                                <TableCell>Employee Count</TableCell>
+                                <TableCell>Full Name</TableCell>
+                                <TableCell>Rating</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell>{selectedWorker.organization.annualTurnover}</TableCell>
+                                <TableCell>{selectedWorker.organization.employeesCount}</TableCell>
+                                <TableCell>{selectedWorker.organization.fullName}</TableCell>
+                                <TableCell>{selectedWorker.organization.rating}</TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                    <DialogTitle>Official Address</DialogTitle>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Street</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell>{selectedWorker.organization.officialAddress.street}</TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                    <DialogTitle>Town</DialogTitle>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>x</TableCell>
+                                <TableCell>y</TableCell>
+                                <TableCell>z</TableCell>
+                                <TableCell>Name</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell>{selectedWorker.organization.officialAddress.town.x}</TableCell>
+                                <TableCell>{selectedWorker.organization.officialAddress.town.y}</TableCell>
+                                <TableCell>{selectedWorker.organization.officialAddress.town.z}</TableCell>
+                                <TableCell>{selectedWorker.organization.officialAddress.town.name}</TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                    <DialogTitle>Person</DialogTitle>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Eye Color</TableCell>
+                                <TableCell>Hair Color</TableCell>
+                                <TableCell>Height</TableCell>
+                                <TableCell>Passport ID</TableCell>
+                                <TableCell>Nationality</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell>{selectedWorker.person.eyeColor}</TableCell>
+                                <TableCell>{selectedWorker.person.hairColor}</TableCell>
+                                <TableCell>{selectedWorker.person.height}</TableCell>
+                                <TableCell>{selectedWorker.person.passportID}</TableCell>
+                                <TableCell>{selectedWorker.person.nationality}</TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                    <DialogTitle>Location</DialogTitle>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>x</TableCell>
+                                <TableCell>y</TableCell>
+                                <TableCell>z</TableCell>
+                                <TableCell>Name</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell>{selectedWorker.person.location.x}</TableCell>
+                                <TableCell>{selectedWorker.person.location.y}</TableCell>
+                                <TableCell>{selectedWorker.person.location.z}</TableCell>
+                                <TableCell>{selectedWorker.person.location.name}</TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                    <Button onClick={() => handleEdit(selectedWorker)}>Edit from here</Button>
+                </DialogContent>
+            </Dialog>
+        )}
+        {isDeleteConfirmOpen && (
+            <Dialog open={isDeleteConfirmOpen} onClose={() => setIsDeleteConfirmOpen(false)}>
+                <DialogTitle>Confirm Delete</DialogTitle>
+                <DialogContent>
+                    Are you sure you want to delete this worker?
+                </DialogContent>
+                <Button onClick={handleDeleteConfirm}>Yes</Button>
+                <Button onClick={() => setIsDeleteConfirmOpen(false)}>No</Button>
+            </Dialog>
+        )}
+        {isSubViewOpen && (
+            <Dialog open={isSubViewOpen} onClose={() => setIsSubViewOpen(false)} fullWidth maxWidth="sm">
+                <DialogTitle>{subViewField.charAt(0).toUpperCase() + subViewField.slice(1)}</DialogTitle>
+                <DialogContent>
+                    {renderSubViewContent()}
+                </DialogContent>
+            </Dialog>
+        )}
+        {isNameContainsOpen && (
+            <Dialog open={isNameContainsOpen} onClose={() => setIsNameContainsOpen(false)}>
+                <DialogTitle>Search by Name Contains</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        label="Substring"
+                        value={nameSubstring}
+                        onChange={(e) => setNameSubstring(e.target.value)}
+                    />
+                </DialogContent>
+                <Button onClick={handleNameContainsConfirm}>Confirm</Button>
+            </Dialog>
+        )}
+        {isNameStartsOpen && (
+            <Dialog open={isNameStartsOpen} onClose={() => setIsNameStartsOpen(false)}>
+                <DialogTitle>Search by Name Starts With</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        label="Substring"
+                        value={nameSubstring}
+                        onChange={(e) => setNameSubstring(e.target.value)}
+                    />
+                </DialogContent>
+                <Button onClick={handleNameStartsConfirm}>Confirm</Button>
+            </Dialog>
+        )}
+        {isRatingLessOpen && (
+            <Dialog open={isRatingLessOpen} onClose={() => setIsRatingLessOpen(false)}>
+                <DialogTitle>Search by Rating Less Than</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        label="Rating Threshold"
+                        type="number"
+                        value={ratingThreshold}
+                        onChange={(e) => setRatingThreshold(e.target.value)}
+                    />
+                </DialogContent>
+                <Button onClick={handleRatingLessConfirm}>Confirm</Button>
+            </Dialog>
+        )}
+        {isHireOpen && (
+            <Dialog open={isHireOpen} onClose={() => setIsHireOpen(false)}>
+                <DialogTitle>Hire Worker to Organization</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        label="Worker ID"
+                        type="number"
+                        value={hireWorkerId}
+                        onChange={(e) => setHireWorkerId(e.target.value)}
+                    />
+                    <TextField
+                        label="Organization ID"
+                        type="number"
+                        value={hireOrgId}
+                        onChange={(e) => setHireOrgId(e.target.value)}
+                    />
+                </DialogContent>
+                <Button onClick={handleHireConfirm}>Confirm</Button>
+            </Dialog>
+        )}
+        {isMoveOpen && (
+            <Dialog open={isMoveOpen} onClose={() => setIsMoveOpen(false)}>
+                <DialogTitle>Move Worker to New Organization</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        label="Worker ID"
+                        type="number"
+                        value={moveWorkerId}
+                        onChange={(e) => setMoveWorkerId(e.target.value)}
+                    />
+                    <TextField
+                        label="New Organization ID"
+                        type="number"
+                        value={moveNewOrgId}
+                        onChange={(e) => setMoveNewOrgId(e.target.value)}
+                    />
+                </DialogContent>
+                <Button onClick={handleMoveConfirm}>Confirm</Button>
+            </Dialog>
+        )}
     </div>)
 }
 export default MainPage;

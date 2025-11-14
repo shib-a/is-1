@@ -4,15 +4,26 @@
              xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd"
              version="3.0">
   <persistence-unit name="workerManagement" transaction-type="JTA">
-    <class>com.is.is1.Worker</class>
+    <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
+    <class>com.is.is1.model.Worker</class>
+    <class>com.is.is1.model.Organization</class>
+    <class>com.is.is1.model.Person</class>
+    <class>com.is.is1.model.Coordinates</class> <!-- если это @Embeddable, можно не указывать, но на всякий случай -->
+    <class>com.is.is1.model.Address</class>
+    <class>com.is.is1.model.Location</class>
     <properties>
       <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
       <property name="jakarta.persistence.jdbc.user" value="postgres"/>
       <property name="jakarta.persistence.jdbc.password" value="NUTd/6706"/>
       <property name="jakarta.persistence.jdbc.url" value="localhost:5432"/>
-      <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
+      <property name="jakarta.persistence.schema-generation.database.action" value="drop-and-create"/>
       <property name="jakarta.persistence.schema-generation.create-source" value="metadata"/>
       <property name="jakarta.persistence.schema-generation.default_schema" value="is"/>
+      <property name="eclipselink.weaving" value="false"/>
+      <property name="eclipselink.logging.level.sql" value="FINE"/>
+      <property name="eclipselink.logging.parameters" value="true"/>
+      <property name="eclipselink.media.type" value="application/json"/>
+      <property name="eclipselink.target-database" value="org.eclipse.persistence.platform.database.PostgreSQLPlatform"/>
     </properties>
   </persistence-unit>
 </persistence>
