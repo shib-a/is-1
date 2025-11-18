@@ -17,12 +17,12 @@ public class Coordinates {
     private Long id;
 
     @NotNull
-    @DecimalMin(value = "-573", inclusive = false)   // x > -573
+    @DecimalMin(value = "-573", inclusive = false)
     @Column(nullable = false)
     private Double x;
 
     @NotNull
-    @DecimalMin(value = "-236", inclusive = false)   // y > -236
+    @DecimalMin(value = "-236", inclusive = false)
     @Column(nullable = false)
     private Double y;
 

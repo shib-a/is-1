@@ -23,11 +23,6 @@ public class Worker {
     @Column(nullable = false)
     private String name;
 
-    @ManyToOne
-    @Valid
-    @NotNull
-    @JoinColumn(nullable = false)
-    private Coordinates coordinates;
 
     @Column(nullable = false, updatable = false)
     private LocalDate creationDate;
@@ -51,18 +46,24 @@ public class Worker {
     @Enumerated(EnumType.STRING)
     private Position position;
 
-    // === Связи ===
+    @ManyToOne
+    @Valid
+    @NotNull
+    @JoinColumn(nullable = false, name = "coordinates_id")
+    private Coordinates coordinates;
+
+    @Valid
     @ManyToOne(optional = false,
             cascade = {CascadeType.PERSIST, CascadeType.MERGE},
             fetch = FetchType.LAZY)
     @JoinColumn(name = "organization_id", nullable = false)
     private Organization organization;
 
-    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, optional = true)
-    @JoinColumn(name = "person_id", unique = true)
+    @Valid
+    @ManyToOne
+    @JoinColumn(name = "person_id")
     private Person person;
 
-    // === Жизненный цикл ===
     @PrePersist
     private void onCreate() {
         if (creationDate == null) {

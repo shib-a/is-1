@@ -16,13 +16,14 @@ public class Address {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank
+    @NotNull
     @Column(nullable = false)
     private String street;
 
     @NotNull
     @Valid
     @ManyToOne
+    @JoinColumn(name="town_id", nullable = false)
     private Location town;
 
     @OneToMany(mappedBy = "addresses")

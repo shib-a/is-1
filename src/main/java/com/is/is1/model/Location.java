@@ -28,6 +28,7 @@ public class Location {
 
     @OneToMany(mappedBy = "locations")
     private List<Person> persons;
+
     @OneToMany(mappedBy = "locations")
     private List<Address> locations;
 }

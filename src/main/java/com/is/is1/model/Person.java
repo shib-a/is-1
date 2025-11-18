@@ -6,6 +6,9 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
+import java.util.List;
+import java.util.Set;
+
 @Entity
 @Table(name = "persons")
 @Data
@@ -16,22 +19,28 @@ public class Person {
 
     @NotNull
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private Color eyeColor;
 
     @NotNull
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private Color hairColor;
-
-    @ManyToOne
-    private Location location;                     // может быть null
 
     @Positive
     @Column(nullable = false)
     private long height;
 
     @Column(unique = true)
-    private String passportID;                     // уникальный, может быть null
+    private String passportID;
 
     @Enumerated(EnumType.STRING)
-    private Country nationality;                   // может быть null
+    private Country nationality;
+
+    @OneToMany(mappedBy = "persons")
+    private List<Worker> workers;
+
+    @ManyToOne
+    @JoinColumn(name = "location_id")
+    private Location locations;
 }

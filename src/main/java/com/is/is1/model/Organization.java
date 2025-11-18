@@ -9,6 +9,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -19,26 +20,26 @@ public class Organization {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @Valid
-    private Address officialAddress;
 
     @Positive
     @Column(nullable = false)
     private double annualTurnover;
 
     @Positive
-    @Column(nullable = false)
-    private long employeesCount;               // поддерживается в сервисном слое
+    private long employeesCount;
 
-    @Size(max = 200)
+    @Size(max = 869)
     private String fullName;
 
     @Positive
-    @Column(nullable = false)
     private float rating;
 
-    // Бидерекционная связь (удобно, но можно убрать)
-    @OneToMany(mappedBy = "organization", fetch = FetchType.LAZY)
-    private Set<Worker> workers = new HashSet<>();
+    @NotNull
+    @ManyToOne
+    @Valid
+    @JoinColumn(name="location_id", nullable=false)
+    private Address officialAddress;
+
+    @OneToMany(mappedBy = "organizations")
+    private List<Worker> workers;
 }
