@@ -1,0 +1,67 @@
+package com.is.is1.service;
+
+import com.is.is1.model.Address;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.*;
+import lombok.Data;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+@ApplicationScoped
+@Data
+public class AddressService {
+
+    @PersistenceContext(unitName = "worker")
+    private EntityManager entityManager;
+
+    @Inject
+    private LocationService locationService;
+
+    private void createAddress(Address address) {
+        entityManager.persist(address);
+    }
+    private Address updateAddress(Address address) {
+        return entityManager.merge(address);
+    }
+    private void deleteAddress(Address address) {
+        entityManager.remove(address);
+    }
+    private Address findAddressById(Long id) {
+        return entityManager.find(Address.class, id);
+    }
+    private List<Address> findAllAddresssPagedFiltered(int page, int pageSize, String sortField, String sortDirection, Map<String, String> filters) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Address> cq = cb.createQuery(Address.class);
+        Root<Address> root = cq.from(Address.class);
+
+        List<Predicate> predicates = new ArrayList<>();
+        if(filters != null && !filters.isEmpty()) {
+            for (Map.Entry<String, String> entry : filters.entrySet()) {
+                String field = entry.getKey();
+                String pattern = entry.getValue();
+
+                Expression<String> fieldAsString;
+                fieldAsString = cb.function("TO_CHAR", String.class, root.get(field));
+                Predicate likePredicate = cb.like(fieldAsString, pattern);
+                predicates.add(likePredicate);
+            }
+        }
+        Predicate fullPredicate = cb.or(predicates.toArray(new Predicate[0]));
+        cq.where(fullPredicate);
+        if(sortField != null && !sortField.isEmpty() && sortDirection != null && !sortDirection.isEmpty()) {
+            cq = (sortDirection.equals("asc")) ? cq.orderBy(cb.asc(root.get(sortField))) : cq.orderBy(cb.desc(root.get(sortField)));
+        }
+        TypedQuery<Address> query = entityManager.createQuery(cq);
+        query.setFirstResult(page * pageSize);
+        query.setMaxResults(pageSize);
+
+        List<Address> results = query.getResultList();
+        return results;
+    }
+}

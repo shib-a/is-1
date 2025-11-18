@@ -4,9 +4,12 @@ import com.is.is1.model.Organization;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.*;
 import jakarta.transaction.Transactional;
+import lombok.Data;
+
 import java.util.List;
 
 @ApplicationScoped
+@Data
 public class OrganizationService {
     @PersistenceContext(unitName = "workerManagement")
     private EntityManager em;

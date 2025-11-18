@@ -30,5 +30,5 @@ public class Location {
     private List<Person> persons;
 
     @OneToMany(mappedBy = "locations")
-    private List<Address> locations;
+    private List<Address> addresses;
 }
