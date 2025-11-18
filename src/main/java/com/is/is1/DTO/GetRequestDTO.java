@@ -1,4 +1,4 @@
-package com.is.is1.DTOs;
+package com.is.is1.DTO;
 
 import lombok.Data;
 

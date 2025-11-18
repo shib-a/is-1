@@ -1,6 +1,5 @@
 package com.is.is1.controller;
 
-import com.is.is1.DTOs.GetRequestDTO;
 import com.is.is1.common.Page;
 import com.is.is1.model.Worker;
 import com.is.is1.service.WorkerService;

@@ -22,7 +22,7 @@ public class Person {
     @Enumerated(EnumType.STRING)
     private Color hairColor;
 
-    @Embedded
+    @ManyToOne
     private Location location;                     // может быть null
 
     @Positive

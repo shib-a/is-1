@@ -14,21 +14,25 @@ import java.util.Date;
 @Data
 public class Worker {
     @Id
+    @Min(1)
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private long id;
 
-    @NotBlank(message = "Name cannot be empty")
+    @NotBlank
+    @NotNull
     @Column(nullable = false)
     private String name;
 
-    @Embedded
+    @ManyToOne
     @Valid
+    @NotNull
+    @JoinColumn(nullable = false)
     private Coordinates coordinates;
 
     @Column(nullable = false, updatable = false)
     private LocalDate creationDate;
 
-    @Positive(message = "Salary must be > 0")
+    @Positive
     @Column(nullable = false)
     private double salary;
 

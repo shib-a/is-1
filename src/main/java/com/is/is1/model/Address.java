@@ -1,20 +1,31 @@
 package com.is.is1.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Embeddable;
+import jakarta.persistence.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
-@Embeddable
+import java.util.List;
+
+@Entity
 @Data
+@Table(name = "addresses")
 public class Address {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
     @NotBlank
     @Column(nullable = false)
     private String street;
 
     @NotNull
     @Valid
+    @ManyToOne
     private Location town;
+
+    @OneToMany(mappedBy = "addresses")
+    @Valid
+    private List<Organization> organizations;
 }

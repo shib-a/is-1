@@ -19,7 +19,7 @@ public class Organization {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Embedded
+    @ManyToOne
     @Valid
     private Address officialAddress;
 
