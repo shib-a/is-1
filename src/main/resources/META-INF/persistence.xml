@@ -5,12 +5,12 @@
              version="3.0">
   <persistence-unit name="workerManagement" transaction-type="JTA">
     <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
-    <class>com.is.is1.model.Worker</class>
-    <class>com.is.is1.model.Organization</class>
-    <class>com.is.is1.model.Person</class>
-    <class>com.is.is1.model.Coordinates</class> <!-- если это @Embeddable, можно не указывать, но на всякий случай -->
-    <class>com.is.is1.model.Address</class>
-    <class>com.is.is1.model.Location</class>
+    <class>ru.itmo.model.Worker</class>
+    <class>ru.itmo.model.Organization</class>
+    <class>ru.itmo.model.Person</class>
+    <class>ru.itmo.model.Coordinates</class> <!-- если это @Embeddable, можно не указывать, но на всякий случай -->
+    <class>ru.itmo.model.Address</class>
+    <class>ru.itmo.model.Location</class>
     <properties>
       <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
       <property name="jakarta.persistence.jdbc.user" value="postgres"/>
