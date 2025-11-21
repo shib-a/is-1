@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import axios from 'axios';
 import {
     Table, TableHead, TableBody, TableRow, TableCell, TablePagination, TableSortLabel,
@@ -13,17 +14,46 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import dayjs from 'dayjs';
+import { Toaster, toast } from 'react-hot-toast';
+
+axios.interceptors.response.use(
+    response => response,
+    error => {
+        let message = 'Неизвестная ошибка';
+
+        if (error.response) {
+            if (error.response.status === 400) message = error.response.data || 'Некорректные данные';
+            if (error.response.status === 404) message = 'Не найдено';
+            if (error.response.status === 500) message = 'Ошибка сервера';
+        } else if (error.request) {
+            message = 'Нет связи с сервером';
+        }
+
+        toast.error(message);
+
+        return Promise.resolve({data: []});
+    }
+);
 
 const API_BASE = 'http://localhost:8081/is-1-1.0-SNAPSHOT/api';
 const POLLING_INTERVAL = 5000;
 
 function App() {
+    const [currentEntity, setCurrentEntity] = useState('workers');
+    const [data, setData] = useState([]);
     const [workers, setWorkers] = useState([]);
     const [organizations, setOrganizations] = useState([]);
     const [addresses, setAddresses] = useState([]);
     const [locations, setLocations] = useState([]);
     const [coordinatesList, setCoordinatesList] = useState([]);
     const [persons, setPersons] = useState([]);
+    const [endDateSearch, setEndDateSearch] = useState(null);
+    const [activeFilters, setActiveFilters] = useState({});
+
+    const [indexWorkerId, setIndexWorkerId] = useState('');
+    const [indexCoef, setIndexCoef] = useState('');
+    const [indexOrgId, setIndexOrgId] = useState('');
+    const [indexOrgCoef, setIndexOrgCoef] = useState('');
 
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(20);
@@ -33,7 +63,44 @@ function App() {
     const [filter, setFilter] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // Modals
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const [editingEntity, setEditingEntity] = useState(null);
+    const [editingEntityType, setEditingEntityType] = useState('');
+    const [editForm, setEditForm] = useState({});
+
+    const openEditModal = (entity, type) => {
+        setEditingEntity(entity);
+        setEditingEntityType(type);
+        setEditForm({ ...entity });
+        setEditModalOpen(true);
+    };
+
+    const saveEditedEntity = async () => {
+        try {
+            const endpoint = `/${editingEntityType}/${editingEntity.id}`;
+            await axios.put(`${API_BASE}${endpoint}`, editForm);
+            setEditModalOpen(false);
+            loadAllData();
+        } catch (e) {
+            console.error(e);
+            toast.error('Ошибка при сохранении');
+        }
+    };
+
+    const deleteEntity = async (id, type) => {
+        if (!window.confirm('Удалить запись?')) return;
+
+        try {
+            const endpoint = `/${type}/${id}`;
+            await axios.delete(`${API_BASE}${endpoint}`);
+            loadAllData();
+        } catch (e) {
+            console.error(e);
+            toast.error('Ошибка при удалении');
+        }
+    };
+
+
     const [workerModalOpen, setWorkerModalOpen] = useState(false);
     const [editingWorker, setEditingWorker] = useState(null);
     const [workerForm, setWorkerForm] = useState({});
@@ -66,7 +133,7 @@ function App() {
 
     const [hasPerson, setHasPerson] = useState(false);
 
-    // Special searches
+
     const [searchNameContains, setSearchNameContains] = useState('');
     const [searchNameStarts, setSearchNameStarts] = useState('');
     const [searchRatingLess, setSearchRatingLess] = useState('');
@@ -74,53 +141,95 @@ function App() {
 
     const loadAllData = async () => {
         try {
-            const [org, addr, loc, coord, person] = await Promise.all([
-                axios.get(`${API_BASE}/organizations/recent`),
-                axios.get(`${API_BASE}/addresses/recent`),
-                axios.get(`${API_BASE}/locations/recent`),
-                axios.get(`${API_BASE}/coordinates/recent`),
-                axios.get(`${API_BASE}/persons/recent`),
-            ]);
-            setOrganizations(org.data || []);
-            setAddresses(addr.data || []);
-            setLocations(loc.data || []);
-            setCoordinatesList(coord.data || []);
-            setPersons(person.data || []);
+            const endpoints = {
+                workers: '/workers',
+                organizations: '/organizations/recent',
+                addresses: '/addresses/recent',
+                locations: '/locations/recent',
+                coordinates: '/coordinates/recent',
+                persons: '/persons/recent'
+            };
+
+            const res = await axios.get(`${API_BASE}${endpoints[currentEntity]}`);
+            setData(res.data || []);
+            setTotal(res.data.length || 0);
         } catch (e) {
-            console.error('Load data error', e);
+            console.error(e);
         }
     };
 
     const loadWorkers = useCallback(async () => {
-        setLoading(true);
+
         try {
             const params = new URLSearchParams({
                 page: page.toString(),
                 size: rowsPerPage.toString(),
                 sort,
                 dir,
-                ...(filter && { filter }),
             });
+
+            if (activeFilters && Object.keys(activeFilters).length > 0) {
+                const filterStrings = Object.entries(activeFilters).map(([field, value]) => {
+                    if (value.trim()) {
+                        return `${field}:${value.trim()}`;
+                    }
+                    return null;
+                }).filter(Boolean);
+
+                if (filterStrings.length > 0) {
+                    params.append('filter', filterStrings.join(','));
+                }
+            }
+
             const res = await axios.get(`${API_BASE}/workers?${params}`);
-            setWorkers(res.data.content || []);
-            setTotal(res.data.totalElements || 0);
+            setWorkers(res.data || []);
+            setTotal(res.data.length || 0);
         } catch (e) {
             console.error(e);
         }
-        setLoading(false);
-    }, [page, rowsPerPage, sort, dir, filter]);
+
+    }, [page, rowsPerPage, sort, dir, activeFilters]);
 
     useEffect(() => {
-        loadWorkers();
-        const interval = setInterval(loadWorkers, POLLING_INTERVAL);
-        return () => clearInterval(interval);
-    }, [loadWorkers]);
+        const loadCurrent = async () => {
+            if (currentEntity === 'workers') {
+                await loadWorkers();
+            } else {
+                try {
+                    const endpoints = {
+                        workers: '/workers',
+                        organizations: '/organizations',
+                        persons: '/persons',
+                        coordinates: '/coordinates',
+                        locations: '/locations',
+                        addresses: '/addresses'
+                    };
+                    const endpoint = endpoints[currentEntity] || '/workers';
+                    const params = new URLSearchParams({
+                        page: page.toString(),
+                        size: rowsPerPage.toString(),
+                        sort,
+                        dir,
+                    });
 
-    useEffect(() => {
-        loadAllData();
-        const interval = setInterval(loadAllData, POLLING_INTERVAL);
+                    if (filter) {
+                        params.append('filter', filter);
+                    }
+                    const res = await axios.get(`${API_BASE}${endpoint}?${params}`);
+                    setData(res.data || []);
+                    setTotal(res.data.length || 0);
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        };
+
+        loadCurrent();
+
+        const interval = setInterval(loadCurrent, POLLING_INTERVAL);
+
         return () => clearInterval(interval);
-    }, [loadWorkers]);
+    }, [currentEntity, page, rowsPerPage, sort, dir, filter]);
 
     const openWorkerModal = (worker = null) => {
         setEditingWorker(worker);
@@ -152,27 +261,37 @@ function App() {
             const res = await axios.post(`${API_BASE}${endpoint}`, data);
             const created = res.data;
 
+            if (!created || (created.exception || (Array.isArray(created.parameterViolations) && created.parameterViolations.length > 0))) {
+                throw created;
+            }
+            if (!created) throw new Error('Созданный объект не возвращен');
+
             setter(prev => [...prev, created]);
 
             if (targetField) {
-                setWorkerForm(prev => ({ ...prev, [targetField]: created }));
+                setWorkerForm(prev => ({...prev, [targetField]: created}));
             }
             if (nestedSetter && nestedField) {
-                nestedSetter(prev => ({ ...prev, [nestedField]: created }));
+                nestedSetter(prev => ({...prev, [nestedField]: created}));
             }
 
             await loadAllData();
 
-            setOrgModalOpen(false);
-            setAddressModalOpen(false);
-            setLocationModalOpen(false);
-            setCoordsModalOpen(false);
-            setPersonModalOpen(false);
+            if (type === 'organization') setOrgModalOpen(false);
+            if (type === 'address') setAddressModalOpen(false);
+            if (type === 'location') setLocationModalOpen(false);
+            if (type === 'coordinates') setCoordsModalOpen(false);
+            if (type === 'person') setPersonModalOpen(false);
         } catch (e) {
-            console.error(e);
-            alert('Ошибка создания');
+            if (e?.propertyViolations || e?.parameterViolations) {
+                // const violations = [...(e.propertyViolations || []), ...(e.parameterViolations || [])];
+                // const messages = violations.map((v) => `${v.propertyPath || 'field'}: ${v.message}`).join('; ');
+                toast.error(`Ошибка валидации`);
+                console.error(e);
+                // toast.error('Ошибка создания');
+            }
         }
-    };
+    }
 
     const saveWorker = async () => {
         try {
@@ -193,7 +312,7 @@ function App() {
             }
 
             if (editingWorker) {
-                await axios.put(`${API_BASE}/workers/update?id=${editingWorker.id}`, payload);
+                await axios.put(`${API_BASE}/workers/${editingWorker.id}`, payload);
             } else {
                 await axios.post(`${API_BASE}/workers`, payload);
             }
@@ -201,14 +320,14 @@ function App() {
             loadWorkers();
         } catch (e) {
             console.error(e);
-            alert('Ошибка сохранения');
+            toast.error('Ошибка сохранения');
         }
     };
 
     const deleteWorker = async (id) => {
         if (window.confirm('Удалить работника?')) {
             try {
-                await axios.delete(`${API_BASE}/workers/delete?id=${id}`);
+                await axios.delete(`${API_BASE}/workers/${id}`);
                 loadWorkers();
             } catch (e) {
                 console.error(e);
@@ -218,9 +337,7 @@ function App() {
 
     const runSpecialSearch = async (type) => {
         let url = '';
-        if (type === 'contains') url = `${API_BASE}/workers/search/name-contains?q=${encodeURIComponent(searchNameContains)}`;
-        if (type === 'starts') url = `${API_BASE}/workers/search/name-starts?q=${encodeURIComponent(searchNameStarts)}`;
-        if (type === 'rating') url = `${API_BASE}/workers/search/rating-less?value=${searchRatingLess}`;
+        if (type === 'contains') url = `${API_BASE}/workers/search/name-contains?q=${searchNameContains}`;
 
         if (!url) return;
         try {
@@ -247,31 +364,145 @@ function App() {
                 </>
             )}
     ];
+    const columnConfigs = {
+        workers: [
+            { id: 'id', label: 'ID' },
+            { id: 'name', label: 'Имя' },
+            { id: 'coordinates', label: 'Координаты', render: w => `${w.coordinates?.x}, ${w.coordinates?.y}` },
+            { id: 'creationDate', label: 'Создан', render: w => dayjs(w.creationDate).format('DD.MM.YYYY') },
+            { id: 'startDate', label: 'Дата начала', render: w => dayjs(w.startDate).format('DD.MM.YYYY') },
+            { id: 'endDate', label: 'Дата окончания', render: w => w.endDate ? dayjs(w.endDate).format('DD.MM.YYYY') : '-' },
+            { id: 'salary', label: 'Зарплата' },
+            { id: 'rating', label: 'Рейтинг' },
+            { id: 'position', label: 'Должность' },
+            { id: 'organization', label: 'Организация', render: w => w.organization?.fullName || `ID ${w.organization?.id}` },
+            { id: 'person', label: 'Человек', render: w => w.person ? (w.person.passportID || `ID ${w.person.id}`) : '-' },
+            { id: 'actions', label: 'Действия', render: w => (
+                    <>
+                        <IconButton size="small" onClick={() => openWorkerModal(w)}><EditIcon /></IconButton>
+                        <IconButton size="small" onClick={() => deleteWorker(w.id)}><DeleteIcon /></IconButton>
+                    </>
+                )}
+        ],
+        organizations: [
+            { id: 'id', label: 'ID' },
+            { id: 'fullName', label: 'Название' },
+            { id: 'annualTurnover', label: 'Оборот' },
+            { id: 'rating', label: 'Рейтинг' },
+            { id: 'employeesCount', label: 'Сотрудников' },
+            { id: 'officialAddress', label: 'Адрес', render: o => o.officialAddress?.street || '' },
+            { id: 'actions', label: '', render: o => (
+                    <>
+                        <IconButton size="small" onClick={() => openEditModal(o, 'organizations')}><EditIcon /></IconButton>
+                        <IconButton size="small" onClick={() => deleteEntity(o.id)}><DeleteIcon /></IconButton>
+                    </>
+                )}
+        ],
+        persons: [
+            { id: 'id', label: 'ID' },
+            { id: 'passportID', label: 'Паспорт' },
+            { id: 'height', label: 'Рост' },
+            { id: 'eyeColor', label: 'Цвет глаз' },
+            { id: 'hairColor', label: 'Цвет волос' },
+            { id: 'nationality', label: 'Национальность' },
+            { id: 'actions', label: '', render: p => (
+                    <>
+                        <IconButton size="small" onClick={() => openEditModal(p, 'persons')}><EditIcon /></IconButton>
+                        <IconButton size="small" onClick={() => deleteEntity(p.id, 'persons')}><DeleteIcon /></IconButton>
+                    </>
+                )}
+        ],
+        coordinates: [
+            { id: 'id', label: 'ID' },
+            { id: 'x', label: 'X' },
+            { id: 'y', label: 'Y' },
+            { id: 'actions', label: '', render: c => (
+                    <>
+                        <IconButton size="small" onClick={() => openEditModal(c, 'coordinates')}><EditIcon /></IconButton>
+                        <IconButton size="small" onClick={() => deleteEntity(c.id, 'coordinates')}><DeleteIcon /></IconButton>
+                    </>
+                )}
+        ],
+        locations: [
+            { id: 'id', label: 'ID' },
+            { id: 'x', label: 'X' },
+            { id: 'y', label: 'Y' },
+            { id: 'z', label: 'Z' },
+            { id: 'name', label: 'Название' },
+            { id: 'actions', label: '', render: l => (
+                    <>
+                        <IconButton size="small" onClick={() => openEditModal(l, 'locations')}><EditIcon /></IconButton>
+                        <IconButton size="small" onClick={() => deleteEntity(l.id, 'locations')}><DeleteIcon /></IconButton>
+                    </>
+                )}
+        ],
+        addresses: [
+            { id: 'id', label: 'ID' },
+            { id: 'street', label: 'Улица' },
+            { id: 'town', label: 'Город', render: a => a.town?.name || '' },
+            { id: 'actions', label: '', render: a => (
+                    <>
+                        <IconButton size="small" onClick={() => openEditModal(a, 'addresses')}><EditIcon /></IconButton>
+                        <IconButton size="small" onClick={() => deleteEntity(a.id, 'addresses')}><DeleteIcon /></IconButton>
+                    </>
+                )}
+        ],
+    };
+
+    const currentColumns = columnConfigs[currentEntity] || columnConfigs.workers;
+    const currentData = currentEntity === 'workers' ? workers : data;
 
     return (
         <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <Toaster
+                position="top-right"
+                reverseOrder={false}
+                gutter={8}
+                toastOptions={{
+                    duration: 4000,
+                    style: {
+                        background: '#363636',
+                        color: '#fff',
+                    },
+                    success: {
+                        duration: 3000,
+                        icon: '✅',
+                    },
+                    error: {
+                        duration: 5000,
+                        icon: '❌',
+                    },
+                }}
+            />
             <Box p={4}>
                 <Typography variant="h4" gutterBottom>Управление работниками</Typography>
 
-                <TextField
-                    fullWidth
-                    margin="normal"
-                    label="Поиск"
-                    value={filter}
-                    onChange={e => { setFilter(e.target.value); setPage(0); }}
-                    InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
-                />
+                <FormControl fullWidth sx={{ mb: 3 }}>
+                    <InputLabel>Сущность</InputLabel>
+                    <Select value={currentEntity} onChange={e => {
+                        setCurrentEntity(e.target.value);
+                        setPage(0);
+                    }}>
+                        <MenuItem value="workers">Работники</MenuItem>
+                        <MenuItem value="organizations">Организации</MenuItem>
+                        <MenuItem value="persons">Люди</MenuItem>
+                        <MenuItem value="coordinates">Координаты</MenuItem>
+                        <MenuItem value="locations">Локации</MenuItem>
+                        <MenuItem value="addresses">Адреса</MenuItem>
+                    </Select>
+                </FormControl>
 
                 <Button variant="contained" startIcon={<AddIcon />} onClick={() => openWorkerModal()} sx={{ mb: 2 }}>
                     Добавить работника
                 </Button>
 
-                {loading ? <CircularProgress /> : (
+
+                {loading ? null : (
                     <>
                         <Table>
                             <TableHead>
                                 <TableRow>
-                                    {columns.map(col => (
+                                    {currentColumns.map(col => (
                                         <TableCell key={col.id}>
                                             {col.id !== 'actions' ? (
                                                 <TableSortLabel
@@ -290,11 +521,11 @@ function App() {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {workers.map(w => (
-                                    <TableRow key={w.id}>
-                                        {columns.map(col => (
+                                {currentData.map(item => (
+                                    <TableRow key={item.id}>
+                                        {currentColumns.map(col => (
                                             <TableCell key={col.id}>
-                                                {col.render ? col.render(w) : w[col.id]}
+                                                {col.render ? col.render(item) : item[col.id] || '-'}
                                             </TableCell>
                                         ))}
                                     </TableRow>
@@ -312,34 +543,105 @@ function App() {
                     </>
                 )}
 
-                {/* Специальные операции */}
-                <Box mt={6} p={3} border={1} borderColor="grey.300" borderRadius={2}>
-                    <Typography variant="h6" gutterBottom>Специальные операции</Typography>
-                    <Grid container spacing={2}>
-                        <Grid item xs={12} md={4}>
-                            <TextField fullWidth label="Name contains" value={searchNameContains} onChange={e => setSearchNameContains(e.target.value)} />
-                            <Button onClick={() => runSpecialSearch('contains')} sx={{ mt: 1 }}>Найти</Button>
+
+                <Box mt={6} p={4} border={1} borderColor="grey.300" borderRadius={2} bgcolor="background.paper">
+                    <Typography variant="h5" gutterBottom color="primary">
+                        Специальные функции
+                    </Typography>
+
+                    <Grid container spacing={3}>
+
+
+                        <Grid item xs={12}>
+                            <Button fullWidth variant="outlined" onClick={async () => {
+                                const res = await axios.get(`${API_BASE}/workers/group/salary`);
+                                toast.success(Object.entries(res.data)
+                                    .map(([salary, count]) => `Зарплата ${salary}₽ → ${count} чел.`)
+                                    .join('\n') || 'Нет данных');
+                            }}>
+                                Группировка по зарплате
+                            </Button>
                         </Grid>
-                        <Grid item xs={12} md={4}>
-                            <TextField fullWidth label="Name starts" value={searchNameStarts} onChange={e => setSearchNameStarts(e.target.value)} />
-                            <Button onClick={() => runSpecialSearch('starts')} sx={{ mt: 1 }}>Найти</Button>
+
+
+                        <Grid item xs={12} md={6}>
+                            <DatePicker
+                                label="Дата окончания"
+                                slotProps={{ textField: { fullWidth: true } }}
+                                onChange={async (date) => {
+                                    if (!date) return;
+                                    const iso = date.format('YYYY-MM-DD');
+                                    const res = await axios.get(`${API_BASE}/workers/count/enddate?date=${iso}`);
+                                    toast.success(`Сотрудников с endDate = ${iso}: ${res.data}`);
+                                }}
+                            />
                         </Grid>
-                        <Grid item xs={12} md={4}>
-                            <TextField fullWidth label="Rating <" type="number" value={searchRatingLess} onChange={e => setSearchRatingLess(e.target.value)} />
-                            <Button onClick={() => runSpecialSearch('rating')} sx={{ mt: 1 }}>Найти</Button>
+
+
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                fullWidth
+                                label="Имя содержит"
+                                value={searchNameContains}
+                                onChange={e => setSearchNameContains(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && runSpecialSearch('contains')}
+                            />
+                            <Button fullWidth sx={{ mt: 1 }} variant="contained" onClick={() => runSpecialSearch('contains')}>
+                                Найти по имени
+                            </Button>
                         </Grid>
+
+                        <Grid item xs={12} md={6}>
+                            <TextField fullWidth label="ID сотрудника" type="number" value={indexWorkerId || ''} onChange={e => setIndexWorkerId(+e.target.value)} />
+                            <TextField fullWidth label="Коэффициент" type="number" step="0.01" value={indexCoef || ''} onChange={e => setIndexCoef(+e.target.value)} sx={{ mt: 1 }} />
+                            <Button fullWidth sx={{ mt: 1 }} color="secondary" variant="contained"
+                                    onClick={async () => {
+                                        if (!indexWorkerId || !indexCoef) return toast.error('Заполните поля');
+                                        await axios.post(`${API_BASE}/workers/index-salary/worker/${indexWorkerId}?coef=${indexCoef}`);
+                                        toast.success('Зарплата проиндексирована');
+                                        loadWorkers();
+                                    }}>
+                                Индексировать зарплату сотруднику
+                            </Button>
+                        </Grid>
+
+                        <Grid item xs={12} md={6}>
+                            <FormControl fullWidth>
+                                <InputLabel>Организация</InputLabel>
+                                <Select value={indexOrgId || ''} onChange={e => setIndexOrgId(e.target.value)}>
+                                    {organizations.map(o => (
+                                        <MenuItem key={o.id} value={o.id}>{o.fullName || `ID ${o.id}`}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                            <TextField fullWidth label="Коэффициент" type="number" step="0.01" value={indexOrgCoef || ''} onChange={e => setIndexOrgCoef(+e.target.value)} sx={{ mt: 1 }} />
+                            <Button fullWidth sx={{ mt: 1 }} color="secondary" variant="contained"
+                                    onClick={async () => {
+                                        if (!indexOrgId || !indexOrgCoef) return toast.error('Выберите организацию и коэффициент коэффициент');
+                                        await axios.post(`${API_BASE}/workers/index-salary/organization/${indexOrgId}?coef=${indexOrgCoef}`);
+                                        toast.success('Зарплата проиндексирована всем сотрудникам организации');
+                                        loadWorkers();
+                                    }}>
+                                Индексировать зарплату организации
+                            </Button>
+                        </Grid>
+
                     </Grid>
                     {specialResults.length > 0 && (
-                        <Box mt={3}>
-                            <Typography>Результаты: {specialResults.length}</Typography>
+                    <Box mt={4}>
+                        <Typography variant="h6">Результаты поиска по имени:</Typography>
+                        <Grid container spacing={1}>
                             {specialResults.map(w => (
-                                <Chip key={w.id} label={w.name} sx={{ m: 0.5 }} />
+                                <Grid item key={w.id}>
+                                    <Chip label={`${w.name} (ID ${w.id})`} color="primary" />
+                                </Grid>
                             ))}
-                        </Box>
-                    )}
+                        </Grid>
+                    </Box>
+                )}
                 </Box>
 
-                {/* Worker modal */}
+
                 <Dialog open={workerModalOpen} onClose={() => setWorkerModalOpen(false)} maxWidth="lg" fullWidth>
                     <DialogTitle>{editingWorker ? 'Редактировать' : 'Создать'} работника</DialogTitle>
                     <DialogContent dividers>
@@ -370,7 +672,6 @@ function App() {
                                 </FormControl>
                             </Grid>
 
-                            {/* Координаты */}
                             <Grid item xs={12} md={6}>
                                 <FormControl fullWidth>
                                     <InputLabel>Координаты</InputLabel>
@@ -388,7 +689,7 @@ function App() {
                                 </Button>
                             </Grid>
 
-                            {/* Организация */}
+
                             <Grid item xs={12} md={6}>
                                 <FormControl fullWidth>
                                     <InputLabel>Организация</InputLabel>
@@ -406,7 +707,7 @@ function App() {
                                 </Button>
                             </Grid>
 
-                            {/* Человек */}
+
                             <Grid item xs={12}>
                                 <FormControlLabel
                                     control={<Checkbox checked={hasPerson} onChange={e => setHasPerson(e.target.checked)} />}
@@ -442,7 +743,7 @@ function App() {
                     </DialogActions>
                 </Dialog>
 
-                {/* Модалка организации */}
+
                 <Dialog open={orgModalOpen} onClose={() => setOrgModalOpen(false)} maxWidth="sm" fullWidth>
                     <DialogTitle>Новая организация</DialogTitle>
                     <DialogContent>
@@ -468,8 +769,12 @@ function App() {
                     </DialogActions>
                 </Dialog>
 
-                {/* Модалка адреса */}
-                <Dialog open={addressModalOpen} onClose={() => setAddressModalOpen(false)} maxWidth="sm" fullWidth>
+
+                <Dialog open={addressModalOpen} onClose={(event, reason) => {
+                    if (reason !== 'backdropClick' && reason !== 'escapeKeyDown') {
+                        setAddressModalOpen(false);
+                    }}}
+                    maxWidth="sm" fullWidth>
                     <DialogTitle>Новый адрес</DialogTitle>
                     <DialogContent>
                         <Grid container spacing={2}>
@@ -491,8 +796,12 @@ function App() {
                     </DialogActions>
                 </Dialog>
 
-                {/* Модалка локации */}
-                <Dialog open={locationModalOpen} onClose={() => setLocationModalOpen(false)} maxWidth="sm" fullWidth>
+
+                <Dialog open={locationModalOpen} onClose={(event, reason) => {
+                    if (reason !== 'backdropClick' && reason !== 'escapeKeyDown') {
+                        setLocationModalOpen(false);
+                    }
+                }} maxWidth="sm" fullWidth>
                     <DialogTitle>Новая локация</DialogTitle>
                     <DialogContent>
                         <Grid container spacing={2}>
@@ -508,8 +817,12 @@ function App() {
                     </DialogActions>
                 </Dialog>
 
-                {/* Модалка координат */}
-                <Dialog open={coordsModalOpen} onClose={() => setCoordsModalOpen(false)} maxWidth="sm" fullWidth>
+
+                <Dialog open={coordsModalOpen} onClose={(event, reason) => {
+                    if (reason !== 'backdropClick' && reason !== 'escapeKeyDown') {
+                        setCoordsModalOpen(false);
+                    }
+                }} maxWidth="sm" fullWidth>
                     <DialogTitle>Новые координаты</DialogTitle>
                     <DialogContent>
                         <Grid container spacing={2}>
@@ -523,8 +836,12 @@ function App() {
                     </DialogActions>
                 </Dialog>
 
-                {/* Модалка человека */}
-                <Dialog open={personModalOpen} onClose={() => setPersonModalOpen(false)} maxWidth="sm" fullWidth>
+
+                <Dialog open={personModalOpen} onClose={(event, reason) => {
+                    if (reason !== 'backdropClick' && reason !== 'escapeKeyDown') {
+                        setPersonModalOpen(false);
+                    }
+                }} maxWidth="sm" fullWidth>
                     <DialogTitle>Новый человек</DialogTitle>
                     <DialogContent>
                         <Grid container spacing={2}>
@@ -583,8 +900,86 @@ function App() {
                         <Button variant="contained" onClick={() => createAndSelect('person', newPerson, setPersons, 'person')}>Создать</Button>
                     </DialogActions>
                 </Dialog>
+
+                <Dialog open={editModalOpen} onClose={() => setEditModalOpen(false)} maxWidth="md" fullWidth>
+                    <DialogTitle>Редактировать {editingEntityType}</DialogTitle>
+                    <DialogContent dividers>
+                        <Grid container spacing={2}>
+                            {Object.entries(editForm).map(([key, value]) => {
+                                if (key === 'id' || Array.isArray(value) || key === 'workers' || key === 'persons' || key === 'organizations' || key === 'addresses') {
+                                    return null;
+                            }
+                                if (key.toLowerCase().includes('date') || key === 'creationDate' || key === 'startDate' || key === 'endDate') {
+                                return (
+                                <Grid item xs={12} md={6} key={key}>
+                            <DatePicker
+                                label={key}
+                                value={value ? dayjs(value) : null}
+                                onChange={d => setEditForm(prev => ({ ...prev, [key]: d?.format('YYYY-MM-DD') || null }))}
+                                slotProps={{ textField: { fullWidth: true } }}
+                            />
+                        </Grid>
+                        );
+                        }
+
+                        if (key === 'position' || key === 'eyeColor' || key === 'hairColor' || key === 'nationality') {
+                        let options = key === 'position'
+                        ? ['LABORER', 'HUMAN_RESOURCES', 'HEAD_OF_DEPARTMENT']
+                        : ['RED', 'BLACK', 'YELLOW', 'ORANGE', 'WHITE'];
+                        if (key === 'nationality') {
+                        options = ['RUSSIA', 'UNITED_KINGDOM', 'FRANCE', 'INDIA', 'THAILAND'];
+                        }
+
+                        return (
+                        <Grid item xs={12} md={6} key={key}>
+                            <FormControl fullWidth>
+                                <InputLabel>{key}</InputLabel>
+                                <Select value={value || ''} onChange={e => setEditForm(prev => ({ ...prev, [key]: e.target.value }))}>
+                                    {options.map(opt => (
+                                        <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                        );
+                        }
+
+                        if (typeof value === 'number') {
+                        return (
+                        <Grid item xs={12} md={6} key={key}>
+                            <TextField
+                                fullWidth
+                                label={key}
+                                type="number"
+                                value={value}
+                                onChange={e => setEditForm(prev => ({ ...prev, [key]: +e.target.value }))}
+                            />
+                        </Grid>
+                        );
+                        }
+
+                        return (
+                        <Grid item xs={12} md={6} key={key}>
+                            <TextField
+                                fullWidth
+                                label={key}
+                                value={value || ''}
+                                onChange={e => setEditForm(prev => ({ ...prev, [key]: e.target.value }))}
+                            />
+                        </Grid>
+                        );
+                        })}
+                    </Grid>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setEditModalOpen(false)}>Отмена</Button>
+                    <Button variant="contained" onClick={saveEditedEntity}>Сохранить</Button>
+                </DialogActions>
+            </Dialog>
             </Box>
+
         </LocalizationProvider>
+
     );
 }
 

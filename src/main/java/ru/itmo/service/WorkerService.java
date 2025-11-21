@@ -1,6 +1,7 @@
 package ru.itmo.service;
 
 import jakarta.inject.Inject;
+import jakarta.ws.rs.NotFoundException;
 import ru.itmo.model.Organization;
 import ru.itmo.model.Person;
 import ru.itmo.model.Worker;
@@ -15,8 +16,10 @@ import lombok.Data;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 @Data
@@ -66,22 +69,33 @@ public class WorkerService {
         Root<Worker> root = cq.from(Worker.class);
 
         List<Predicate> predicates = new ArrayList<>();
-        if(filters != null && !filters.isEmpty()) {
+        if (filters != null && !filters.isEmpty()) {
             for (Map.Entry<String, String> entry : filters.entrySet()) {
                 String field = entry.getKey();
-                String pattern = entry.getValue();
+                String pattern = "%" + entry.getValue().toLowerCase() + "%";
 
-                Expression<String> fieldAsString;
-                fieldAsString = cb.function("TO_CHAR", String.class, root.get(field));
-                Predicate likePredicate = cb.like(fieldAsString, pattern);
-                predicates.add(likePredicate);
+                Expression<String> fieldExpr;
+                try {
+                    fieldExpr = root.get(field).as(String.class);
+                    Predicate likePredicate = cb.like(cb.lower(fieldExpr), pattern);
+                    predicates.add(likePredicate);
+                } catch (IllegalArgumentException e) {
+                    fieldExpr = cb.function("CAST", String.class, root.get(field), cb.literal("TEXT"));
+                    Predicate likePredicate = cb.like(cb.lower(fieldExpr), pattern);
+                    predicates.add(likePredicate);
+                }
             }
         }
-        Predicate fullPredicate = cb.or(predicates.toArray(new Predicate[0]));
-        cq.where(fullPredicate);
-        if(sortField != null && !sortField.isEmpty() && sortDirection != null && !sortDirection.isEmpty()) {
-            cq = (sortDirection.equals("asc")) ? cq.orderBy(cb.asc(root.get(sortField))) : cq.orderBy(cb.desc(root.get(sortField)));
+
+        if (!predicates.isEmpty()) {
+            cq.where(cb.or(predicates.toArray(new Predicate[0])));
         }
+
+        if (sortField != null && !sortField.isEmpty() && sortDirection != null && !sortDirection.isEmpty()) {
+            Order order = sortDirection.equals("asc") ? cb.asc(root.get(sortField)) : cb.desc(root.get(sortField));
+            cq.orderBy(order);
+        }
+
         TypedQuery<Worker> query = entityManager.createQuery(cq);
         query.setFirstResult(page * pageSize);
         query.setMaxResults(pageSize);
@@ -90,51 +104,6 @@ public class WorkerService {
         return results;
     }
 
-//    private List<Worker> findAllWorkersPagedFiltered(int page, int pageSize, String sortField, String sortDirection, Map<String, String> filters) {
-//        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-//        CriteriaQuery<Worker> cq = cb.createQuery(Worker.class);
-//        Root<Worker> root = cq.from(Worker.class);
-//        root.fetch("organization", JoinType.LEFT);
-//        root.fetch("person", JoinType.LEFT);
-//
-//        List<Predicate> predicates = new ArrayList<>();
-//        if(filters != null && !filters.isEmpty()) {
-//            for (Map.Entry<String, String> entry : filters.entrySet()) {
-//                String field = entry.getKey();
-//                String pattern = entry.getValue();
-//
-//                Expression<String> fieldAsString;
-//                if (field.contains(".")) {
-//                    String[] parts = field.split("\\.");
-//                    fieldAsString = cb.function("TO_CHAR", String.class, root.get(parts[0]).get(parts[1]));
-//                } else {
-//                    fieldAsString = cb.function("TO_CHAR", String.class, root.get(field));
-//                }
-//                Predicate likePredicate = cb.like(fieldAsString, pattern);
-//                predicates.add(likePredicate);
-//            }
-//        }
-//
-//        if (!predicates.isEmpty()) {
-//            Predicate fullPredicate = cb.or(predicates.toArray(new Predicate[0]));
-//            cq.where(fullPredicate);
-//        }
-//
-//        if(sortField != null && !sortField.isEmpty() && sortDirection != null && !sortDirection.isEmpty()) {
-//            Path<?> sortPath = sortField.contains(".")
-//                    ? root.get(sortField.split("\\.")[0]).get(sortField.split("\\.")[1])
-//                    : root.get(sortField);
-//            cq = (sortDirection.equals("asc")) ? cq.orderBy(cb.asc(sortPath)) : cq.orderBy(cb.desc(sortPath));
-//        }
-//
-//        cq.distinct(true);
-//
-//        TypedQuery<Worker> query = entityManager.createQuery(cq);
-//        query.setFirstResult(page * pageSize);
-//        query.setMaxResults(pageSize);
-//
-//        return query.getResultList();
-//    }
 
     public Worker findById(Long id) {
         return entityManager.find(Worker.class, id);
@@ -142,53 +111,59 @@ public class WorkerService {
 
 
 
-    public List<Worker> nameContains(String substring) {
-        TypedQuery<Worker> q = entityManager.createQuery(
-                "SELECT w FROM Worker w WHERE LOWER(w.name) LIKE LOWER(:sub)", Worker.class);
-        q.setParameter("sub", "%" + substring + "%");
-        return q.getResultList();
+    public Map<Double, Long> groupBySalary() {
+        return entityManager.createQuery(
+                        "SELECT w.salary, COUNT(w) FROM Worker w GROUP BY w.salary ORDER BY w.salary",
+                        Object[].class)
+                .getResultList()
+                .stream()
+                .collect(Collectors.toMap(
+                        arr -> (Double) arr[0],
+                        arr -> (Long) arr[1]
+                ));
     }
-
-    public List<Worker> nameStartsWith(String prefix) {
-        TypedQuery<Worker> q = entityManager.createQuery(
-                "SELECT w FROM Worker w WHERE LOWER(w.name) LIKE LOWER(:pref)", Worker.class);
-        q.setParameter("pref", prefix + "%");
-        return q.getResultList();
-    }
-
-    public List<Worker> ratingLessThan(Double value) {
-        TypedQuery<Worker> q = entityManager.createQuery(
-                "SELECT w FROM Worker w WHERE w.rating < :val", Worker.class);
-        q.setParameter("val", value);
-        return q.getResultList();
-    }
-
-    @Transactional
-    public void hire(Long workerId, Long orgId) {
-        Worker worker = entityManager.find(Worker.class, workerId);
-        Organization org = entityManager.find(Organization.class, orgId);
-        if (worker == null || org == null) throw new NoResultException();
-
-        if (worker.getOrganization() != null) {
-            worker.getOrganization().setEmployeesCount(worker.getOrganization().getEmployeesCount() - 1);
+    public long countByEndDate(Date endDate) {
+        if (endDate == null) {
+            return entityManager.createQuery("SELECT COUNT(w) FROM Worker w WHERE w.endDate IS NULL", Long.class)
+                    .getSingleResult();
         }
-
-        worker.setOrganization(org);
-        org.setEmployeesCount(org.getEmployeesCount() + 1);
+        return entityManager.createQuery("SELECT COUNT(w) FROM Worker w WHERE w.endDate = :endDate", Long.class)
+                .setParameter("endDate", endDate)
+                .getSingleResult();
     }
 
-    @Transactional
-    public void transfer(Long workerId, Long newOrgId) {
+    public List<Worker> findByNameContaining(String substring) {
+        String pattern = "%" + substring.toLowerCase() + "%";
+        return entityManager.createQuery(
+                        "SELECT w FROM Worker w WHERE LOWER(w.name) LIKE :pattern",
+                        Worker.class)
+                .setParameter("pattern", pattern)
+                .getResultList();
+    }
+
+    public void indexSalaryForWorker(Long workerId, double coefficient) {
         Worker worker = entityManager.find(Worker.class, workerId);
-        Organization newOrg = entityManager.find(Organization.class, newOrgId);
-        if (worker == null || newOrg == null) throw new NoResultException();
-
-        Organization oldOrg = worker.getOrganization();
-        if (oldOrg != null) {
-            oldOrg.setEmployeesCount(oldOrg.getEmployeesCount() - 1);
-        }
-
-        worker.setOrganization(newOrg);
-        newOrg.setEmployeesCount(newOrg.getEmployeesCount() + 1);
+        if (worker == null) throw new NotFoundException("Worker not found");
+        entityManager.getTransaction().begin();
+        worker.setSalary(worker.getSalary() * coefficient);
+        entityManager.merge(worker);
+        entityManager.flush();
+        entityManager.getTransaction().commit();
     }
+
+    public void indexSalaryForOrganization(Long organizationId, double coefficient) {
+        entityManager.getTransaction().begin();
+        int updated = entityManager.createQuery(
+                        "UPDATE Worker w SET w.salary = w.salary * :coef " +
+                                "WHERE w.organization.id = :orgId")
+                .setParameter("coef", coefficient)
+                .setParameter("orgId", organizationId)
+                .executeUpdate();
+        entityManager.flush();
+        entityManager.getTransaction().commit();
+        if (updated == 0) {
+            throw new NotFoundException("No workers found in organization or organization not found");
+        }
+    }
+
 }

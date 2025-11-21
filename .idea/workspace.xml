@@ -5,32 +5,26 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="9e7b116c-0b3b-45e3-8076-33fa4f20f4f3" name="Changes" comment="bruh">
-      <change afterPath="$PROJECT_DIR$/src/main/java/ru/itmo/CustomJacksonProvider.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/build.gradle" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/App.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/CORSFilter.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/itmo/CORSFilter.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/HelloApplication.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/JaxRsActivator.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/itmo/JaxRsActivator.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/DTO/GetRequestDTO.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/DTO/WorkerDTO.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/common/Page.java" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/controller/AddressController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/itmo/controller/AddressController.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/controller/CoordinatesController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/itmo/controller/CoordinatesController.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/controller/LocationController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/itmo/controller/LocationController.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/controller/OrganizationController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/itmo/controller/OrganizationController.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/controller/PersonController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/itmo/controller/PersonController.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/controller/WorkerController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/itmo/controller/WorkerController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/model/Address.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/itmo/model/Address.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/model/Coordinates.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/itmo/model/Coordinates.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/model/Location.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/itmo/model/Location.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/model/Organization.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/itmo/model/Organization.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/model/Person.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/itmo/model/Person.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/model/Worker.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/itmo/model/Worker.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/service/AddressService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/itmo/service/AddressService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/service/CoordinatesService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/itmo/service/CoordinatesService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/service/LocationService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/itmo/service/LocationService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/service/OrganizationService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/itmo/service/OrganizationService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/service/PersonService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/itmo/service/PersonService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/ru/itmo/service/WorkerService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ru/itmo/service/WorkerService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/META-INF/beans.xml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/META-INF/beans.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/META-INF/persistence.xml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/META-INF/persistence.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -114,7 +108,7 @@
     ]
   }
 }]]></component>
-  <component name="RunManager" selected="JBoss/WildFly Server.JBoss/WildFly 33.0.2.Final">
+  <component name="RunManager" selected="npm.start">
     <configuration name="is-1 [build]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
       <ExternalSystemSettings>
         <option name="executionName" />
@@ -276,8 +270,8 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Gradle.is-1 [clean]" />
         <item itemvalue="npm.start" />
+        <item itemvalue="Gradle.is-1 [clean]" />
         <item itemvalue="Gradle.is-1 [build]" />
         <item itemvalue="npm.build" />
         <item itemvalue="Jest.renders learn react link" />
@@ -310,6 +304,15 @@
       <workItem from="1762856426512" duration="9139000" />
       <workItem from="1763066494893" duration="11129000" />
     </task>
+    <task id="LOCAL-00001" summary="bruh">
+      <option name="closed" value="true" />
+      <created>1763703500958</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1763703500958</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

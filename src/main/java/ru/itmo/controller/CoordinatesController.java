@@ -2,6 +2,7 @@ package ru.itmo.controller;
 
 import ru.itmo.model.Coordinates;
 import ru.itmo.model.Organization;
+import ru.itmo.model.Worker;
 import ru.itmo.service.CoordinatesService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -9,6 +10,9 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 import java.util.List;
+import java.util.Map;
+
+import static ru.itmo.common.FilterParser.parseFilters;
 
 @Path("/coordinates")
 @Produces(MediaType.APPLICATION_JSON)
@@ -17,6 +21,17 @@ public class CoordinatesController {
 
     @Inject
     private CoordinatesService coordinatesService;
+
+    @GET
+    public List<Coordinates> listPagedFiltered(
+            @QueryParam("page") @DefaultValue("0") int page,
+            @QueryParam("size") @DefaultValue("20") int size,
+            @QueryParam("sort") @DefaultValue("id") String sort,
+            @QueryParam("dir") @DefaultValue("asc") String dir,
+            @QueryParam("filter") String filter) {
+        Map<String, String> filterMap = parseFilters(filter);
+        return coordinatesService.findAllCoordinatesPagedFiltered(page, size, sort, dir, filterMap);
+    }
 
     @GET
     @Path("/recent")

@@ -1,6 +1,5 @@
 package ru.itmo.controller;
 
-import ru.itmo.common.Page;
 import ru.itmo.model.Worker;
 import ru.itmo.service.WorkerService;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -11,9 +10,15 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static ru.itmo.common.FilterParser.parseFilters;
 
 @Path("/workers")
 @Produces(MediaType.APPLICATION_JSON)
@@ -23,14 +28,13 @@ public class WorkerController {
     private WorkerService workerService;
 
     @GET
-    @Path("/list")
     public List<Worker> listPagedFiltered(
             @QueryParam("page") @DefaultValue("0") int page,
             @QueryParam("size") @DefaultValue("20") int size,
             @QueryParam("sort") @DefaultValue("id") String sort,
             @QueryParam("dir") @DefaultValue("asc") String dir,
-            @QueryParam("filters") String filters) {
-        Map<String, String> filterMap = parseFilters(filters);
+            @QueryParam("filter") String filter) {
+        Map<String, String> filterMap = parseFilters(filter);
         return workerService.findAllWorkersPagedFiltered(page, size, sort, dir, filterMap);
     }
     // Получение одного работника по id
@@ -64,59 +68,45 @@ public class WorkerController {
         return Response.noContent().build();
     }
 
-    // ==================== Специальные операции ====================
-
     @GET
-    @Path("/search/name-contains/{q}")
-    public List<Worker> nameContains(@PathParam("q") String q) {
-        if (q == null || q.isBlank()) throw new BadRequestException("Parameter q is required");
-        return workerService.nameContains(q);
+    @Path("/group/salary")
+    public Map<Double, Long> nameContains() {
+        return workerService.groupBySalary();
     }
 
     @GET
-    @Path("/search/name-starts/{q}")
-    public List<Worker> nameStartsWith(@PathParam("q") String q) {
-        if (q == null || q.isBlank()) throw new BadRequestException("Parameter q is required");
-        return workerService.nameStartsWith(q);
-    }
-
-    @GET
-    @Path("/search/rating-less/{value}")
-    public List<Worker> ratingLessThan(@PathParam("value") @NotNull Double value) {
-        return workerService.ratingLessThan(value);
-    }
-
-    // Принять на работу — только query-параметры
-    @POST
-    @Path("/hire/{workerId}/{orgId}")
-    public Response hire(
-            @PathParam("workerId") @NotNull Long workerId,
-            @PathParam("orgId") @NotNull Long orgId) {
-        workerService.hire(workerId, orgId);
-        return Response.ok().build();
-    }
-
-    // Переместить сотрудника — только query-параметры
-    @POST
-    @Path("/transfer/{workerId}/{newOrgId}")
-    public Response transfer(
-            @PathParam("workerId") @NotNull Long workerId,
-            @PathParam("newOrgId") @NotNull Long newOrgId) {
-        workerService.transfer(workerId, newOrgId);
-        return Response.ok().build();
-    }
-
-    private Map<String, String> parseFilters(String filters) {
-        Map<String, String> filterMap = new HashMap<>();
-        if (filters != null && !filters.isBlank()) {
-            String[] pairs = filters.split(",");
-            for (String pair : pairs) {
-                String[] keyValue = pair.split(":");
-                if (keyValue.length == 2) {
-                    filterMap.put(keyValue[0], keyValue[1]);
-                }
+    @Path("/count/enddate")
+    public long countByEndDate(@QueryParam("date") String dateString) {
+        LocalDate date = null;
+        if (dateString != null && !dateString.isBlank()) {
+            try {
+                date = LocalDate.parse(dateString);
+                return workerService.countByEndDate(Date.from(Instant.from(date)));
+            } catch (DateTimeParseException e) {
+                throw new BadRequestException("Неверный формат даты");
             }
         }
-        return filterMap;
+        return workerService.countByEndDate(null);
     }
+
+    @GET
+    @Path("/search/name-contains")
+    public List<Worker> nameContains(@QueryParam("q") String q) {
+        return workerService.findByNameContaining(q);
+    }
+
+    @POST
+    @Path("/index-salary/worker/{id}")
+    public Response indexWorkerSalary(@PathParam("id") Long id, @QueryParam("coef") double coef) {
+        workerService.indexSalaryForWorker(id, coef);
+        return Response.ok().build();
+    }
+
+    @POST
+    @Path("/index-salary/organization/{id}")
+    public Response indexOrgSalary(@PathParam("id") Long id, @QueryParam("coef") double coef) {
+        workerService.indexSalaryForOrganization(id, coef);
+        return Response.ok().build();
+    }
+
 }

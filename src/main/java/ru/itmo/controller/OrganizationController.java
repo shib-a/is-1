@@ -1,6 +1,7 @@
 package ru.itmo.controller;
 
 import ru.itmo.model.Organization;
+import ru.itmo.model.Worker;
 import ru.itmo.service.OrganizationService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -10,14 +11,28 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.*;
 
 import java.util.List;
+import java.util.Map;
+
+import static ru.itmo.common.FilterParser.parseFilters;
+
 @Path("/organizations")
 @Produces(MediaType.APPLICATION_JSON)
 @ApplicationScoped
 public class OrganizationController {
     @Inject
-    OrganizationService organizationService;
+    private OrganizationService organizationService;
 
-    // Список всех организаций (для выпадающего списка при создании работника)
+    @GET
+    public List<Organization> listPagedFiltered(
+            @QueryParam("page") @DefaultValue("0") int page,
+            @QueryParam("size") @DefaultValue("20") int size,
+            @QueryParam("sort") @DefaultValue("id") String sort,
+            @QueryParam("dir") @DefaultValue("asc") String dir,
+            @QueryParam("filter") String filter) {
+        Map<String, String> filterMap = parseFilters(filter);
+        return organizationService.findAllOrganizationsPagedFiltered(page, size, sort, dir, filterMap);
+    }
+
     @GET
     @Path("/recent")
     public List<Organization> list() {

@@ -2,6 +2,7 @@ package ru.itmo.controller;
 
 import ru.itmo.model.Organization;
 import ru.itmo.model.Person;
+import ru.itmo.model.Worker;
 import ru.itmo.service.PersonService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -10,6 +11,9 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.*;
 import java.util.List;
+import java.util.Map;
+
+import static ru.itmo.common.FilterParser.parseFilters;
 
 @Path("/persons")
 @Produces(MediaType.APPLICATION_JSON)
@@ -17,6 +21,17 @@ import java.util.List;
 public class PersonController {
     @Inject
     private PersonService personService;
+
+    @GET
+    public List<Person> listPagedFiltered(
+            @QueryParam("page") @DefaultValue("0") int page,
+            @QueryParam("size") @DefaultValue("20") int size,
+            @QueryParam("sort") @DefaultValue("id") String sort,
+            @QueryParam("dir") @DefaultValue("asc") String dir,
+            @QueryParam("filter") String filter) {
+        Map<String, String> filterMap = parseFilters(filter);
+        return personService.findAllPersonsPagedFiltered(page, size, sort, dir, filterMap);
+    }
 
     @GET
     @Path("/recent")

@@ -2,6 +2,7 @@ package ru.itmo.controller;
 
 import ru.itmo.model.Location;
 import ru.itmo.model.Organization;
+import ru.itmo.model.Worker;
 import ru.itmo.service.LocationService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -9,6 +10,9 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 import java.util.List;
+import java.util.Map;
+
+import static ru.itmo.common.FilterParser.parseFilters;
 
 @Path("/locations")
 @Produces(MediaType.APPLICATION_JSON)
@@ -16,6 +20,18 @@ public class LocationController {
 
     @Inject
     private LocationService locationService;
+
+    @GET
+    public List<Location> listPagedFiltered(
+            @QueryParam("page") @DefaultValue("0") int page,
+            @QueryParam("size") @DefaultValue("20") int size,
+            @QueryParam("sort") @DefaultValue("id") String sort,
+            @QueryParam("dir") @DefaultValue("asc") String dir,
+            @QueryParam("filter") String filter) {
+        Map<String, String> filterMap = parseFilters(filter);
+        return locationService.findAllLocationsPagedFiltered(page, size, sort, dir, filterMap);
+    }
+
     @GET
     @Path("/recent")
     public List<Location> list() {

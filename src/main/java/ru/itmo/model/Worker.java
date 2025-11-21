@@ -13,7 +13,6 @@ import java.util.Date;
 @Data
 public class Worker {
     @Id
-//    @Min(1)
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 

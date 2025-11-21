@@ -19,28 +19,39 @@ public class AddressService {
     @Inject
     private EntityManager entityManager;
 
-    private List<Address> findAllAddressesPagedFiltered(int page, int pageSize, String sortField, String sortDirection, Map<String, String> filters) {
+    public List<Address> findAllAddressesPagedFiltered(int page, int pageSize, String sortField, String sortDirection, Map<String, String> filters) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<Address> cq = cb.createQuery(Address.class);
         Root<Address> root = cq.from(Address.class);
 
         List<Predicate> predicates = new ArrayList<>();
-        if(filters != null && !filters.isEmpty()) {
+        if (filters != null && !filters.isEmpty()) {
             for (Map.Entry<String, String> entry : filters.entrySet()) {
                 String field = entry.getKey();
-                String pattern = entry.getValue();
+                String pattern = "%" + entry.getValue().toLowerCase() + "%";
 
-                Expression<String> fieldAsString;
-                fieldAsString = cb.function("TO_CHAR", String.class, root.get(field));
-                Predicate likePredicate = cb.like(fieldAsString, pattern);
-                predicates.add(likePredicate);
+                Expression<String> fieldExpr;
+                try {
+                    fieldExpr = root.get(field).as(String.class);
+                    Predicate likePredicate = cb.like(cb.lower(fieldExpr), pattern);
+                    predicates.add(likePredicate);
+                } catch (IllegalArgumentException e) {
+                    fieldExpr = cb.function("CAST", String.class, root.get(field), cb.literal("TEXT"));
+                    Predicate likePredicate = cb.like(cb.lower(fieldExpr), pattern);
+                    predicates.add(likePredicate);
+                }
             }
         }
-        Predicate fullPredicate = cb.or(predicates.toArray(new Predicate[0]));
-        cq.where(fullPredicate);
-        if(sortField != null && !sortField.isEmpty() && sortDirection != null && !sortDirection.isEmpty()) {
-            cq = (sortDirection.equals("asc")) ? cq.orderBy(cb.asc(root.get(sortField))) : cq.orderBy(cb.desc(root.get(sortField)));
+
+        if (!predicates.isEmpty()) {
+            cq.where(cb.or(predicates.toArray(new Predicate[0])));
         }
+
+        if (sortField != null && !sortField.isEmpty() && sortDirection != null && !sortDirection.isEmpty()) {
+            Order order = sortDirection.equals("asc") ? cb.asc(root.get(sortField)) : cb.desc(root.get(sortField));
+            cq.orderBy(order);
+        }
+
         TypedQuery<Address> query = entityManager.createQuery(cq);
         query.setFirstResult(page * pageSize);
         query.setMaxResults(pageSize);
