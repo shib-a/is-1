@@ -1,5 +1,7 @@
 package ru.itmo.service;
 
+import jakarta.inject.Inject;
+import ru.itmo.model.Coordinates;
 import ru.itmo.model.Location;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
@@ -17,7 +19,7 @@ import java.util.Map;
 @ApplicationScoped
 @Data
 public class LocationService {
-    @PersistenceContext(unitName = "workerManagement")
+    @Inject
     private EntityManager entityManager;
 
     private List<Location> findAllLocationsPagedFiltered(int page, int pageSize, String sortField, String sortDirection, Map<String, String> filters) {
@@ -53,26 +55,37 @@ public class LocationService {
         return entityManager.find(Location.class, id);
     }
 
-    @Transactional
     public Location createLocation(Location location) {
+        entityManager.getTransaction().begin();
         entityManager.persist(location);
+        entityManager.flush();
+        entityManager.getTransaction().commit();
         return location;
     }
 
-    @Transactional
     public Location updateLocation(Long id, Location location) {
         Location existing = entityManager.find(Location.class, id);
         if (existing == null) throw new NoResultException("Location not found");
 
+        entityManager.getTransaction().begin();
         location.setId(id);
-        return entityManager.merge(location);
+        var res = entityManager.merge(location);
+        entityManager.flush();
+        entityManager.getTransaction().commit();
+        return res;
     }
 
-    @Transactional
     public void deleteLocation(Long id) {
         Location location = entityManager.find(Location.class, id);
         if (location == null) throw new NoResultException("Location not found");
-
+        entityManager.getTransaction().begin();
         entityManager.remove(location);
+        entityManager.flush();
+        entityManager.getTransaction().commit();
+    }
+    public List<Location> findAllLocationsTruncated() {
+        TypedQuery<Location> query = entityManager.createQuery("SELECT l FROM Location l ORDER BY l.id DESC", Location.class);
+        query.setMaxResults(10);
+        return query.getResultList();
     }
 }

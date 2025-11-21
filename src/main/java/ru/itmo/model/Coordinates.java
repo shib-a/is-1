@@ -1,5 +1,6 @@
 package ru.itmo.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
@@ -26,5 +27,6 @@ public class Coordinates {
     private Double y;
 
     @OneToMany(mappedBy = "coordinates")
+    @JsonIgnore
     private List<Worker> workers;
 }

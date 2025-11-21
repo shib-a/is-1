@@ -1,6 +1,7 @@
 package ru.itmo.model;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -26,9 +27,11 @@ public class Location {
 
     private String name;
 
-    @OneToMany(mappedBy = "locations")
+    @OneToMany(mappedBy = "location")
+    @JsonIgnore
     private List<Person> persons;
 
-    @OneToMany(mappedBy = "locations")
+    @OneToMany(mappedBy = "town")
+    @JsonIgnore
     private List<Address> addresses;
 }

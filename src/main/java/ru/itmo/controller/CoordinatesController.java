@@ -1,11 +1,14 @@
 package ru.itmo.controller;
 
 import ru.itmo.model.Coordinates;
+import ru.itmo.model.Organization;
 import ru.itmo.service.CoordinatesService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
+import java.util.List;
 
 @Path("/coordinates")
 @Produces(MediaType.APPLICATION_JSON)
@@ -14,6 +17,12 @@ public class CoordinatesController {
 
     @Inject
     private CoordinatesService coordinatesService;
+
+    @GET
+    @Path("/recent")
+    public List<Coordinates> list() {
+        return coordinatesService.findAllCoordinatesTruncated();
+    }
 
     @GET
     @Path("/{id}")

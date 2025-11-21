@@ -1,5 +1,6 @@
 package ru.itmo.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -35,10 +36,11 @@ public class Person {
     @Enumerated(EnumType.STRING)
     private Country nationality;
 
-    @OneToMany(mappedBy = "persons")
+    @OneToMany(mappedBy = "person")
+    @JsonIgnore
     private List<Worker> workers;
 
     @ManyToOne
     @JoinColumn(name = "location_id")
-    private Location locations;
+    private Location location;
 }

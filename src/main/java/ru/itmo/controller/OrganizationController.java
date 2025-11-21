@@ -10,9 +10,8 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.*;
 
 import java.util.List;
-@Path("/api/organizations")
+@Path("/organizations")
 @Produces(MediaType.APPLICATION_JSON)
-@Consumes(MediaType.APPLICATION_JSON)
 @ApplicationScoped
 public class OrganizationController {
     @Inject
@@ -20,21 +19,22 @@ public class OrganizationController {
 
     // Список всех организаций (для выпадающего списка при создании работника)
     @GET
+    @Path("/recent")
     public List<Organization> list() {
-        return organizationService.findAll();
+        return organizationService.findAllOrganizationsTruncated();
     }
 
     @GET
     @Path("/get")
     public Organization get(@QueryParam("id") @NotNull Long id) {
-        Organization org = organizationService.findById(id);
+        Organization org = organizationService.findOrganizationById(id);
         if (org == null) throw new NotFoundException("Organization not found");
         return org;
     }
 
     @POST
     public Response create(@Valid Organization org) {
-        Organization created = organizationService.create(org);
+        Organization created = organizationService.createOrganization(org);
         return Response.ok().entity(created).build();
     }
 
@@ -43,7 +43,7 @@ public class OrganizationController {
     public Organization update(
             @QueryParam("id") @NotNull Long id,
             @Valid Organization org) {
-        return organizationService.update(id, org);
+        return organizationService.updateOrganization(id, org);
     }
 
     @DELETE

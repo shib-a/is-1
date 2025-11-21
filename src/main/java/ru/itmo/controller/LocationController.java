@@ -1,19 +1,26 @@
 package ru.itmo.controller;
 
 import ru.itmo.model.Location;
+import ru.itmo.model.Organization;
 import ru.itmo.service.LocationService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
-@Path("/api/locations")
+import java.util.List;
+
+@Path("/locations")
 @Produces(MediaType.APPLICATION_JSON)
-@Consumes(MediaType.APPLICATION_JSON)
 public class LocationController {
 
     @Inject
     private LocationService locationService;
+    @GET
+    @Path("/recent")
+    public List<Location> list() {
+        return locationService.findAllLocationsTruncated();
+    }
 
     @GET
     @Path("/{id}")

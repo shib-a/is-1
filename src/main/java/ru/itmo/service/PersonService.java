@@ -1,5 +1,10 @@
 package ru.itmo.service;
 
+import jakarta.inject.Inject;
+import jakarta.persistence.NoResultException;
+import jakarta.transaction.Transactional;
+import ru.itmo.model.Address;
+import ru.itmo.model.Coordinates;
 import ru.itmo.model.Person;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
@@ -15,22 +20,41 @@ import java.util.Map;
 @ApplicationScoped
 @Data
 public class PersonService {
-    @PersistenceContext(unitName = "workerManagement")
+
+    @Inject
     private EntityManager entityManager;
 
-    private void createPerson(Person person) {
+    public Person createPerson(Person person) {
+        entityManager.getTransaction().begin();
         entityManager.persist(person);
+        entityManager.flush();
+        entityManager.getTransaction().commit();
+        return person;
     }
 
-    private Person updatePerson(Person person) {
-        return entityManager.merge(person);
+    public Person updatePerson(Long id, Person person) {
+        Person existing = entityManager.find(Person.class, id);
+        if (existing == null) throw new NoResultException("Person not found");
+
+        entityManager.getTransaction().begin();
+        person.setId(id);
+        var res = entityManager.merge(person);
+        entityManager.flush();
+        entityManager.getTransaction().commit();
+        return res;
     }
 
-    private void deletePerson(Person person) {
+    public void deletePerson(Long id) {
+        Person person = entityManager.find(Person.class, id);
+        if (person == null) throw new NoResultException("Address not found");
+
+        entityManager.getTransaction().begin();
         entityManager.remove(person);
+        entityManager.flush();
+        entityManager.getTransaction().commit();
     }
 
-    private Person findPersonById(Long id) {
+    public Person findPersonById(Long id) {
         return entityManager.find(Person.class, id);
     }
 
@@ -62,5 +86,10 @@ public class PersonService {
 
         List<Person> results = query.getResultList();
         return results;
+    }
+    public List<Person> findAllPersonsTruncated() {
+        TypedQuery<Person> query = entityManager.createQuery("SELECT p FROM Person p ORDER BY p.id DESC", Person.class);
+        query.setMaxResults(10);
+        return query.getResultList();
     }
 }

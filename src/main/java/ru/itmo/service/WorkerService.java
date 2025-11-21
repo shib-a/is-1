@@ -1,6 +1,8 @@
 package ru.itmo.service;
 
+import jakarta.inject.Inject;
 import ru.itmo.model.Organization;
+import ru.itmo.model.Person;
 import ru.itmo.model.Worker;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
@@ -19,31 +21,49 @@ import java.util.Map;
 @ApplicationScoped
 @Data
 public class WorkerService {
-    @PersistenceContext(unitName = "workerManagement")
+
+    @Inject
     private EntityManager entityManager;
 
-    private void createWorker(Worker worker) {
+    public Worker updateWorker(Long id, Worker worker) {
+        Worker existing = entityManager.find(Worker.class, id);
+        if (existing == null) throw new NoResultException("Person not found");
+
+
+        entityManager.getTransaction().begin();
+        worker.setId(id);
+        var res = entityManager.merge(worker);
+        entityManager.flush();
+        entityManager.getTransaction().commit();
+        return res;
+    }
+
+    public Worker createWorker(Worker worker) {
+        entityManager.getTransaction().begin();
         entityManager.persist(worker);
+        entityManager.flush();
+        entityManager.getTransaction().commit();
+        return worker;
     }
 
-    private Worker updateWorker(Worker worker) {
-        return entityManager.merge(worker);
-    }
+    public void deleteWorker(Long id) {
+        Worker worker = entityManager.find(Worker.class, id);
+        if (worker == null) throw new NoResultException("Address not found");
 
-    private void deleteWorker(Worker worker) {
+        entityManager.getTransaction().begin();
         entityManager.remove(worker);
+        entityManager.flush();
+        entityManager.getTransaction().commit();
     }
 
-    private Worker findWorkerById(Long id) {
+    public Worker findWorkerById(Long id) {
         return entityManager.find(Worker.class, id);
     }
 
-    private List<Worker> findAllWorkersPagedFiltered(int page, int pageSize, String sortField, String sortDirection, Map<String, String> filters) {
+    public List<Worker> findAllWorkersPagedFiltered(int page, int pageSize, String sortField, String sortDirection, Map<String, String> filters) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<Worker> cq = cb.createQuery(Worker.class);
         Root<Worker> root = cq.from(Worker.class);
-        root.fetch("organization", JoinType.LEFT);
-        root.fetch("person", JoinType.LEFT);
 
         List<Predicate> predicates = new ArrayList<>();
         if(filters != null && !filters.isEmpty()) {
@@ -52,95 +72,75 @@ public class WorkerService {
                 String pattern = entry.getValue();
 
                 Expression<String> fieldAsString;
-                if (field.contains(".")) {
-                    String[] parts = field.split("\\.");
-                    fieldAsString = cb.function("TO_CHAR", String.class, root.get(parts[0]).get(parts[1]));
-                } else {
-                    fieldAsString = cb.function("TO_CHAR", String.class, root.get(field));
-                }
+                fieldAsString = cb.function("TO_CHAR", String.class, root.get(field));
                 Predicate likePredicate = cb.like(fieldAsString, pattern);
                 predicates.add(likePredicate);
             }
         }
-
-        if (!predicates.isEmpty()) {
-            Predicate fullPredicate = cb.or(predicates.toArray(new Predicate[0]));
-            cq.where(fullPredicate);
-        }
-
+        Predicate fullPredicate = cb.or(predicates.toArray(new Predicate[0]));
+        cq.where(fullPredicate);
         if(sortField != null && !sortField.isEmpty() && sortDirection != null && !sortDirection.isEmpty()) {
-            Path<?> sortPath = sortField.contains(".")
-                    ? root.get(sortField.split("\\.")[0]).get(sortField.split("\\.")[1])
-                    : root.get(sortField);
-            cq = (sortDirection.equals("asc")) ? cq.orderBy(cb.asc(sortPath)) : cq.orderBy(cb.desc(sortPath));
+            cq = (sortDirection.equals("asc")) ? cq.orderBy(cb.asc(root.get(sortField))) : cq.orderBy(cb.desc(root.get(sortField)));
         }
-
-        cq.distinct(true);
-
         TypedQuery<Worker> query = entityManager.createQuery(cq);
         query.setFirstResult(page * pageSize);
         query.setMaxResults(pageSize);
 
-        return query.getResultList();
+        List<Worker> results = query.getResultList();
+        return results;
     }
+
+//    private List<Worker> findAllWorkersPagedFiltered(int page, int pageSize, String sortField, String sortDirection, Map<String, String> filters) {
+//        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+//        CriteriaQuery<Worker> cq = cb.createQuery(Worker.class);
+//        Root<Worker> root = cq.from(Worker.class);
+//        root.fetch("organization", JoinType.LEFT);
+//        root.fetch("person", JoinType.LEFT);
+//
+//        List<Predicate> predicates = new ArrayList<>();
+//        if(filters != null && !filters.isEmpty()) {
+//            for (Map.Entry<String, String> entry : filters.entrySet()) {
+//                String field = entry.getKey();
+//                String pattern = entry.getValue();
+//
+//                Expression<String> fieldAsString;
+//                if (field.contains(".")) {
+//                    String[] parts = field.split("\\.");
+//                    fieldAsString = cb.function("TO_CHAR", String.class, root.get(parts[0]).get(parts[1]));
+//                } else {
+//                    fieldAsString = cb.function("TO_CHAR", String.class, root.get(field));
+//                }
+//                Predicate likePredicate = cb.like(fieldAsString, pattern);
+//                predicates.add(likePredicate);
+//            }
+//        }
+//
+//        if (!predicates.isEmpty()) {
+//            Predicate fullPredicate = cb.or(predicates.toArray(new Predicate[0]));
+//            cq.where(fullPredicate);
+//        }
+//
+//        if(sortField != null && !sortField.isEmpty() && sortDirection != null && !sortDirection.isEmpty()) {
+//            Path<?> sortPath = sortField.contains(".")
+//                    ? root.get(sortField.split("\\.")[0]).get(sortField.split("\\.")[1])
+//                    : root.get(sortField);
+//            cq = (sortDirection.equals("asc")) ? cq.orderBy(cb.asc(sortPath)) : cq.orderBy(cb.desc(sortPath));
+//        }
+//
+//        cq.distinct(true);
+//
+//        TypedQuery<Worker> query = entityManager.createQuery(cq);
+//        query.setFirstResult(page * pageSize);
+//        query.setMaxResults(pageSize);
+//
+//        return query.getResultList();
+//    }
 
     public Worker findById(Long id) {
         return entityManager.find(Worker.class, id);
     }
 
-    @Transactional
-    public Worker create(Worker worker) {
-        worker.setCreationDate(LocalDate.now());
 
-        Organization org = worker.getOrganization();
-        if (org.getId() == null) {
-            entityManager.persist(org);
-            org.setEmployeesCount(1L);
-        } else {
-            org = entityManager.find(Organization.class, org.getId());
-            org.setEmployeesCount(org.getEmployeesCount() + 1);
-        }
-        worker.setOrganization(org);
-
-        entityManager.persist(worker);
-        return worker;
-    }
-
-    @Transactional
-    public Worker update(Long id, Worker updated) {
-        Worker existing = entityManager.find(Worker.class, id);
-        if (existing == null) throw new NoResultException("Worker not found");
-
-        existing.setName(updated.getName());
-        existing.setCoordinates(updated.getCoordinates());
-        existing.setSalary(updated.getSalary());
-        existing.setRating(updated.getRating());
-        existing.setStartDate(updated.getStartDate());
-        existing.setEndDate(updated.getEndDate());
-        existing.setPosition(updated.getPosition());
-
-        if (!existing.getOrganization().getId().equals(updated.getOrganization().getId())) {
-            Organization oldOrg = existing.getOrganization();
-            Organization newOrg = entityManager.find(Organization.class, updated.getOrganization().getId());
-
-            oldOrg.setEmployeesCount(oldOrg.getEmployeesCount() - 1);
-            newOrg.setEmployeesCount(newOrg.getEmployeesCount() + 1);
-            existing.setOrganization(newOrg);
-        }
-
-        existing.setPerson(updated.getPerson());
-
-        return entityManager.merge(existing);
-    }
-
-    @Transactional
-    public void delete(Long id) {
-        Worker worker = entityManager.find(Worker.class, id);
-        if (worker == null) throw new NoResultException();
-
-        worker.getOrganization().setEmployeesCount(worker.getOrganization().getEmployeesCount() - 1);
-        entityManager.remove(worker);
-    }
 
     public List<Worker> nameContains(String substring) {
         TypedQuery<Worker> q = entityManager.createQuery(

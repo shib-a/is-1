@@ -1,6 +1,8 @@
 package ru.itmo.service;
 
+import jakarta.inject.Inject;
 import jakarta.persistence.NoResultException;
+import jakarta.transaction.Transactional;
 import ru.itmo.model.Coordinates;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
@@ -14,28 +16,35 @@ import java.util.Map;
 
 @ApplicationScoped
 public class CoordinatesService {
-    @PersistenceContext(unitName = "workerManagement")
+    @Inject
     private EntityManager entityManager;
 
     public Coordinates createCoordinates(Coordinates coordinates) {
+        entityManager.getTransaction().begin();
         entityManager.persist(coordinates);
+        entityManager.flush();
+        entityManager.getTransaction().commit();
         return coordinates;
     }
 
     public Coordinates updateCoordinates(Long id, Coordinates coordinates) {
-
         Coordinates existing = entityManager.find(Coordinates.class, id);
         if (existing == null) throw new NoResultException("Coordinates not found");
-
+        entityManager.getTransaction().begin();
         coordinates.setId(id);
-        return entityManager.merge(coordinates);
+        var res = entityManager.merge(coordinates);
+        entityManager.flush();
+        entityManager.getTransaction().commit();
+        return res;
     }
 
     public void deleteCoordinates(Long id) {
         Coordinates coordinates = entityManager.find(Coordinates.class, id);
         if (coordinates == null) throw new NoResultException("Coordinates not found");
-
+        entityManager.getTransaction().begin();
         entityManager.remove(coordinates);
+        entityManager.flush();
+        entityManager.getTransaction().commit();
     }
     public Coordinates findCoordinatesById(Long id) {
         return entityManager.find(Coordinates.class, id);
@@ -68,5 +77,10 @@ public class CoordinatesService {
 
         List<Coordinates> results = query.getResultList();
         return results;
+    }
+    public List<Coordinates> findAllCoordinatesTruncated() {
+        TypedQuery<Coordinates> query = entityManager.createQuery("SELECT c FROM Coordinates c ORDER BY c.id DESC", Coordinates.class);
+        query.setMaxResults(10);
+        return query.getResultList();
     }
 }

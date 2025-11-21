@@ -1,5 +1,6 @@
 package ru.itmo.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -37,6 +38,7 @@ public class Organization {
     @JoinColumn(name="location_id", nullable=false)
     private Address officialAddress;
 
-    @OneToMany(mappedBy = "organizations")
+    @OneToMany(mappedBy = "organization")
+    @JsonIgnore
     private List<Worker> workers;
 }

@@ -1,14 +1,13 @@
 package ru.itmo.service;
 
+import jakarta.inject.Inject;
+import jakarta.persistence.*;
 import ru.itmo.model.Address;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.NoResultException;
-import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.*;
 import jakarta.transaction.Transactional;
 import lombok.Data;
+import ru.itmo.model.Coordinates;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +16,7 @@ import java.util.Map;
 @ApplicationScoped
 @Data
 public class AddressService {
-    @PersistenceContext(unitName = "workerManagement")
+    @Inject
     private EntityManager entityManager;
 
     private List<Address> findAllAddressesPagedFiltered(int page, int pageSize, String sortField, String sortDirection, Map<String, String> filters) {
@@ -53,26 +52,40 @@ public class AddressService {
         return entityManager.find(Address.class, id);
     }
 
-    @Transactional
+
     public Address createAddress(Address address) {
+        entityManager.getTransaction().begin();
         entityManager.persist(address);
+        entityManager.flush();
+        entityManager.getTransaction().commit();
         return address;
     }
 
-    @Transactional
+
     public Address updateAddress(Long id, Address address) {
+        entityManager.getTransaction().begin();
         Address existing = entityManager.find(Address.class, id);
         if (existing == null) throw new NoResultException("Address not found");
 
         address.setId(id);
-        return entityManager.merge(address);
+        var res = entityManager.merge(address);
+        entityManager.flush();
+        entityManager.getTransaction().commit();
+        return res;
     }
 
-    @Transactional
     public void deleteAddress(Long id) {
+        entityManager.getTransaction().begin();
         Address address = entityManager.find(Address.class, id);
         if (address == null) throw new NoResultException("Address not found");
 
         entityManager.remove(address);
+        entityManager.flush();
+        entityManager.getTransaction().commit();
+    }
+    public List<Address> findAllAddressesTruncated() {
+        TypedQuery<Address> query = entityManager.createQuery("SELECT a FROM Address a ORDER BY a.id DESC", Address.class);
+        query.setMaxResults(10);
+        return query.getResultList();
     }
 }

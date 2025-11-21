@@ -29,10 +29,10 @@ dependencies {
   compileOnly("org.projectlombok:lombok:1.18.42")
   implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.2'
   implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.2'
-  implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.17.2'
   implementation 'com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider:2.17.2'
-  implementation 'com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-base:2.17.2'
   annotationProcessor("org.projectlombok:lombok:1.18.42")
+  compileOnly 'org.jboss.resteasy:resteasy-core:6.2.10.Final'
+  compileOnly("org.jboss.resteasy:resteasy-jackson2-provider:6.2.10.Final")
 
   testCompileOnly("org.projectlombok:lombok:1.18.42")
   testAnnotationProcessor("org.projectlombok:lombok:1.18.42")

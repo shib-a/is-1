@@ -1,5 +1,6 @@
 package ru.itmo.controller;
 
+import ru.itmo.model.Organization;
 import ru.itmo.model.Person;
 import ru.itmo.service.PersonService;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -10,30 +11,30 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.*;
 import java.util.List;
 
-@Path("/api/persons")
+@Path("/persons")
 @Produces(MediaType.APPLICATION_JSON)
-@Consumes(MediaType.APPLICATION_JSON)
 @ApplicationScoped
 public class PersonController {
     @Inject
-    PersonService personService;
+    private PersonService personService;
 
     @GET
+    @Path("/recent")
     public List<Person> list() {
-        return personService.findAll();
+        return personService.findAllPersonsTruncated();
     }
 
     @GET
     @Path("/get")
     public Person get(@QueryParam("id") @NotNull Long id) {
-        Person person = personService.findById(id);
+        Person person = personService.findPersonById(id);
         if (person == null) throw new NotFoundException("Person not found");
         return person;
     }
 
     @POST
     public Response create(@Valid Person person, @Context UriInfo uriInfo) {
-        Person created = personService.create(person);
+        Person created = personService.createPerson(person);
         return Response.ok().entity(created).build();
     }
 
@@ -42,13 +43,13 @@ public class PersonController {
     public Person update(
             @QueryParam("id") @NotNull Long id,
             @Valid Person person) {
-        return personService.update(id, person);
+        return personService.updatePerson(id, person);
     }
 
     @DELETE
     @Path("/delete")
     public Response delete(@QueryParam("id") @NotNull Long id) {
-        personService.delete(id);
+        personService.deletePerson(id);
         return Response.noContent().build();
     }
 }

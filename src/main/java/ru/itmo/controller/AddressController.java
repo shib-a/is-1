@@ -1,19 +1,26 @@
 package ru.itmo.controller;
 
 import ru.itmo.model.Address;
+import ru.itmo.model.Organization;
 import ru.itmo.service.AddressService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import java.util.List;
+
 @Path("/addresses")
 @Produces(MediaType.APPLICATION_JSON)
-@Consumes(MediaType.APPLICATION_JSON)
 public class AddressController {
 
     @Inject
     private AddressService addressService;
+    @GET
+    @Path("/recent")
+    public List<Address> list() {
+        return addressService.findAllAddressesTruncated();
+    }
 
     @GET
     @Path("/{id}")

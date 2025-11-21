@@ -11,97 +11,112 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-@Path("/api/workers")
+@Path("/workers")
 @Produces(MediaType.APPLICATION_JSON)
-@Consumes({MediaType.APPLICATION_JSON})
 @ApplicationScoped
 public class WorkerController {
     @Inject
     private WorkerService workerService;
 
     @GET
-    public Page<Worker> list(
+    @Path("/list")
+    public List<Worker> listPagedFiltered(
             @QueryParam("page") @DefaultValue("0") int page,
             @QueryParam("size") @DefaultValue("20") int size,
             @QueryParam("sort") @DefaultValue("id") String sort,
             @QueryParam("dir") @DefaultValue("asc") String dir,
-            @QueryParam("filter") String filter) {
-        return workerService.findAllPaged(page, size, sort, dir, filter);
+            @QueryParam("filters") String filters) {
+        Map<String, String> filterMap = parseFilters(filters);
+        return workerService.findAllWorkersPagedFiltered(page, size, sort, dir, filterMap);
     }
     // Получение одного работника по id
     @GET
-    @Path("/get")
-    public Worker get(@QueryParam("id") @NotNull Long id) {
-        Worker w = workerService.findById(id);
+    @Path("/{id}")
+    public Worker get(@PathParam("id") @NotNull Long id) {
+        Worker w = workerService.findWorkerById(id);
         if (w == null) throw new NotFoundException("Worker not found");
         return w;
     }
 
-    // Создание — без id
     @POST
     public Response create(@Valid Worker worker) {
-        Worker created = workerService.create(worker);
+        Worker created = workerService.createWorker(worker);
         return Response.ok().entity(created).build();
     }
 
-    // Обновление по id из query
+    // Update a worker by ID
     @PUT
-    @Path("/update")
+    @Path("/{id}")
     public Worker update(
-            @QueryParam("id") @NotNull Long id,
+            @PathParam("id") @NotNull Long id,
             @Valid Worker worker) {
-        return workerService.update(id, worker);
+        return workerService.updateWorker(id, worker);
     }
 
-    // Удаление по id из query
     @DELETE
-    @Path("/delete")
-    public Response delete(@QueryParam("id") @NotNull Long id) {
-        workerService.delete(id);
+    @Path("/{id}")
+    public Response delete(@PathParam("id") @NotNull Long id) {
+        workerService.deleteWorker(id);
         return Response.noContent().build();
     }
 
     // ==================== Специальные операции ====================
 
     @GET
-    @Path("/search/name-contains")
-    public List<Worker> nameContains(@QueryParam("q") String q) {
+    @Path("/search/name-contains/{q}")
+    public List<Worker> nameContains(@PathParam("q") String q) {
         if (q == null || q.isBlank()) throw new BadRequestException("Parameter q is required");
         return workerService.nameContains(q);
     }
 
     @GET
-    @Path("/search/name-starts")
-    public List<Worker> nameStartsWith(@QueryParam("q") String q) {
+    @Path("/search/name-starts/{q}")
+    public List<Worker> nameStartsWith(@PathParam("q") String q) {
         if (q == null || q.isBlank()) throw new BadRequestException("Parameter q is required");
         return workerService.nameStartsWith(q);
     }
 
     @GET
-    @Path("/search/rating-less")
-    public List<Worker> ratingLessThan(@QueryParam("value") @NotNull Double value) {
+    @Path("/search/rating-less/{value}")
+    public List<Worker> ratingLessThan(@PathParam("value") @NotNull Double value) {
         return workerService.ratingLessThan(value);
     }
 
     // Принять на работу — только query-параметры
     @POST
-    @Path("/hire")
+    @Path("/hire/{workerId}/{orgId}")
     public Response hire(
-            @QueryParam("workerId") @NotNull Long workerId,
-            @QueryParam("orgId")   @NotNull Long orgId) {
+            @PathParam("workerId") @NotNull Long workerId,
+            @PathParam("orgId") @NotNull Long orgId) {
         workerService.hire(workerId, orgId);
         return Response.ok().build();
     }
 
     // Переместить сотрудника — только query-параметры
     @POST
-    @Path("/transfer")
+    @Path("/transfer/{workerId}/{newOrgId}")
     public Response transfer(
-            @QueryParam("workerId") @NotNull Long workerId,
-            @QueryParam("newOrgId") @NotNull Long newOrgId) {
+            @PathParam("workerId") @NotNull Long workerId,
+            @PathParam("newOrgId") @NotNull Long newOrgId) {
         workerService.transfer(workerId, newOrgId);
         return Response.ok().build();
+    }
+
+    private Map<String, String> parseFilters(String filters) {
+        Map<String, String> filterMap = new HashMap<>();
+        if (filters != null && !filters.isBlank()) {
+            String[] pairs = filters.split(",");
+            for (String pair : pairs) {
+                String[] keyValue = pair.split(":");
+                if (keyValue.length == 2) {
+                    filterMap.put(keyValue[0], keyValue[1]);
+                }
+            }
+        }
+        return filterMap;
     }
 }

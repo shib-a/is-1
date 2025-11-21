@@ -3,27 +3,76 @@
              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
              xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd"
              version="3.0">
-  <persistence-unit name="workerManagement" transaction-type="JTA">
+<!--  <persistence-unit name="workerManagement" transaction-type="RESOURCE_LOCAL">-->
+<!--    <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>-->
+
+<!--    <class>ru.itmo.model.Worker</class>-->
+<!--    <class>ru.itmo.model.Organization</class>-->
+<!--    <class>ru.itmo.model.Person</class>-->
+<!--    <class>ru.itmo.model.Coordinates</class>-->
+<!--    <class>ru.itmo.model.Address</class>-->
+<!--    <class>ru.itmo.model.Location</class>-->
+<!--    <properties>-->
+<!--      <property name="eclipselink.jdbc.schema" value="is"/>-->
+
+<!--      <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>-->
+<!--      <property name="jakarta.persistence.jdbc.user" value="postgres"/>-->
+<!--      <property name="jakarta.persistence.jdbc.password" value="NUTd/6706"/>-->
+<!--      <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://localhost:5432/postgres?currentSchema=is"/>-->
+
+<!--&lt;!&ndash;      <property name="jakarta.persistence.schema-generation.database.action" value="drop-and-create"/>&ndash;&gt;-->
+<!--      <property name="jakarta.persistence.schema-generation.create-source" value="metadata"/>-->
+<!--      <property name="eclipselink.weaving" value="false"/>-->
+<!--      <property name="eclipselink.logging.level.sql" value="FINE"/>-->
+<!--      <property name="eclipselink.logging.parameters" value="true"/>-->
+<!--      <property name="eclipselink.logging.connection" value="true"/>-->
+<!--      <property name="eclipselink.ddl-generation" value="drop-and-create-tables"/>-->
+<!--      <property name="eclipselink.ddl-generation.output-mode" value="database"/>-->
+<!--      <property name="eclipselink.media.type" value="application/json"/>-->
+<!--      <property name="eclipselink.target-database" value="org.eclipse.persistence.platform.database.PostgreSQLPlatform"/>-->
+<!--    </properties>-->
+
+<!--  </persistence-unit>-->
+  <persistence-unit name="workerManagement" transaction-type="RESOURCE_LOCAL">  <!-- IMPORTANT: change to RESOURCE_LOCAL for dev -->
     <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
-    <class>ru.itmo.model.Worker</class>
-    <class>ru.itmo.model.Organization</class>
-    <class>ru.itmo.model.Person</class>
-    <class>ru.itmo.model.Coordinates</class> <!-- если это @Embeddable, можно не указывать, но на всякий случай -->
-    <class>ru.itmo.model.Address</class>
-    <class>ru.itmo.model.Location</class>
+
+        <class>ru.itmo.model.Worker</class>
+        <class>ru.itmo.model.Organization</class>
+        <class>ru.itmo.model.Person</class>
+        <class>ru.itmo.model.Coordinates</class>
+        <class>ru.itmo.model.Address</class>
+        <class>ru.itmo.model.Location</class>
+
+    <exclude-unlisted-classes>false</exclude-unlisted-classes>
+
     <properties>
+      <!-- JDBC connection (EclipseLink will use this directly) -->
       <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
+      <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://localhost:5432/postgres?currentSchema=is"/>
       <property name="jakarta.persistence.jdbc.user" value="postgres"/>
       <property name="jakarta.persistence.jdbc.password" value="NUTd/6706"/>
-      <property name="jakarta.persistence.jdbc.url" value="localhost:5432"/>
-      <property name="jakarta.persistence.schema-generation.database.action" value="drop-and-create"/>
-      <property name="jakarta.persistence.schema-generation.create-source" value="metadata"/>
-      <property name="jakarta.persistence.schema-generation.default_schema" value="is"/>
-      <property name="eclipselink.weaving" value="false"/>
-      <property name="eclipselink.logging.level.sql" value="FINE"/>
+
+      <!-- Force schema -->
+      <property name="eclipselink.jdbc.schema" value="is"/>
+
+      <!-- DDL — this will now actually run -->
+      <property name="eclipselink.ddl-generation" value="drop-and-create-tables"/>
+      <property name="eclipselink.ddl-generation.output-mode" value="database"/>
+
+      <!-- Force EclipseLink to run DDL on startup even in container -->
+      <property name="eclipselink.deploy-on-startup" value="true"/>
+
+      <!-- Maximum logging — you will see every CREATE TABLE -->
+      <property name="eclipselink.logging.level" value="FINEST"/>
       <property name="eclipselink.logging.parameters" value="true"/>
+      <property name="eclipselink.logging.level.sql" value="FINE"/>
+      <property name="eclipselink.logging.level.ddl" value="FINE"/>
+
+      <!-- Weaving off (as you had) -->
+      <property name="eclipselink.weaving" value="false"/>
+
+      <!-- Jackson instead of MOXy -->
       <property name="eclipselink.media.type" value="application/json"/>
-      <property name="eclipselink.target-database" value="org.eclipse.persistence.platform.database.PostgreSQLPlatform"/>
     </properties>
   </persistence-unit>
 </persistence>
