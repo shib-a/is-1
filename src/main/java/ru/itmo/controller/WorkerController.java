@@ -1,5 +1,6 @@
 package ru.itmo.controller;
 
+import ru.itmo.DTO.WorkerDTO;
 import ru.itmo.model.Worker;
 import ru.itmo.service.WorkerService;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -28,7 +29,7 @@ public class WorkerController {
     private WorkerService workerService;
 
     @GET
-    public List<Worker> listPagedFiltered(
+    public List<WorkerDTO> listPagedFiltered(
             @QueryParam("page") @DefaultValue("0") int page,
             @QueryParam("size") @DefaultValue("20") int size,
             @QueryParam("sort") @DefaultValue("id") String sort,
@@ -40,24 +41,26 @@ public class WorkerController {
     // Получение одного работника по id
     @GET
     @Path("/{id}")
-    public Worker get(@PathParam("id") @NotNull Long id) {
-        Worker w = workerService.findWorkerById(id);
+    public WorkerDTO get(@PathParam("id") @NotNull Long id) {
+        WorkerDTO w = workerService.findWorkerById(id);
         if (w == null) throw new NotFoundException("Worker not found");
         return w;
     }
 
     @POST
-    public Response create(@Valid Worker worker) {
-        Worker created = workerService.createWorker(worker);
+    public Response create(@Valid WorkerDTO worker) {
+        System.out.println("Creating worker: " + worker.getName());
+        WorkerDTO created = workerService.createWorker(worker);
+        System.out.println("Created worker: " + worker.getName());
         return Response.ok().entity(created).build();
     }
 
     // Update a worker by ID
     @PUT
     @Path("/{id}")
-    public Worker update(
+    public WorkerDTO update(
             @PathParam("id") @NotNull Long id,
-            @Valid Worker worker) {
+            @Valid WorkerDTO worker) {
         return workerService.updateWorker(id, worker);
     }
 

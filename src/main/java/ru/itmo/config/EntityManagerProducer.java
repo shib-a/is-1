@@ -1,4 +1,4 @@
-package ru.itmo;
+package ru.itmo.config;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;

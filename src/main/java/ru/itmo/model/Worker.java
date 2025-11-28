@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDate;
 import java.util.Date;
@@ -11,10 +13,11 @@ import java.util.Date;
 @Entity
 @Table(name = "workers")
 @Data
+@Getter @Setter
 public class Worker {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
+    private Long id;
 
     @NotBlank
     @NotNull
@@ -45,19 +48,16 @@ public class Worker {
     private Position position;
 
     @ManyToOne
-    @Valid
     @NotNull
     @JoinColumn(nullable = false, name = "coordinates_id")
     private Coordinates coordinates;
 
-    @Valid
     @ManyToOne(optional = false,
             cascade = {CascadeType.PERSIST, CascadeType.MERGE},
             fetch = FetchType.LAZY)
     @JoinColumn(name = "organization_id", nullable = false)
     private Organization organization;
 
-    @Valid
     @ManyToOne
     @JoinColumn(name = "person_id")
     private Person person;
@@ -67,5 +67,16 @@ public class Worker {
         if (creationDate == null) {
             creationDate = LocalDate.now();
         }
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+    public LocalDate getCreationDate() {
+        return creationDate;
     }
 }

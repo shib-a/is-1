@@ -16,25 +16,6 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import dayjs from 'dayjs';
 import { Toaster, toast } from 'react-hot-toast';
 
-axios.interceptors.response.use(
-    response => response,
-    error => {
-        let message = 'Неизвестная ошибка';
-
-        if (error.response) {
-            if (error.response.status === 400) message = error.response.data || 'Некорректные данные';
-            if (error.response.status === 404) message = 'Не найдено';
-            if (error.response.status === 500) message = 'Ошибка сервера';
-        } else if (error.request) {
-            message = 'Нет связи с сервером';
-        }
-
-        toast.error(message);
-
-        return Promise.resolve({data: []});
-    }
-);
-
 const API_BASE = 'http://localhost:8081/is-1-1.0-SNAPSHOT/api';
 const POLLING_INTERVAL = 5000;
 
@@ -259,68 +240,79 @@ function App() {
             if (type === 'person') endpoint = '/persons';
 
             const res = await axios.post(`${API_BASE}${endpoint}`, data);
+
             const created = res.data;
 
-            if (!created || (created.exception || (Array.isArray(created.parameterViolations) && created.parameterViolations.length > 0))) {
-                throw created;
-            }
-            if (!created) throw new Error('Созданный объект не возвращен');
+            // Эта проверка больше НЕ НУЖНА — если валидация сломалась → уже 400 → catch
+            // if (!created || created.exception || created.propertyViolations) throw created;
 
             setter(prev => [...prev, created]);
 
             if (targetField) {
-                setWorkerForm(prev => ({...prev, [targetField]: created}));
+                setWorkerForm(prev => ({ ...prev, [targetField]: created }));
             }
             if (nestedSetter && nestedField) {
-                nestedSetter(prev => ({...prev, [nestedField]: created}));
+                nestedSetter(prev => ({ ...prev, [nestedField]: created }));
             }
 
-            await loadAllData();
-
+            // Закрываем модалки
             if (type === 'organization') setOrgModalOpen(false);
             if (type === 'address') setAddressModalOpen(false);
             if (type === 'location') setLocationModalOpen(false);
             if (type === 'coordinates') setCoordsModalOpen(false);
             if (type === 'person') setPersonModalOpen(false);
+
         } catch (e) {
-            if (e?.propertyViolations || e?.parameterViolations) {
-                // const violations = [...(e.propertyViolations || []), ...(e.parameterViolations || [])];
-                // const messages = violations.map((v) => `${v.propertyPath || 'field'}: ${v.message}`).join('; ');
-                toast.error(`Ошибка валидации`);
-                console.error(e);
-                // toast.error('Ошибка создания');
+            console.error(e);
+            if (e.response?.data?.propertyViolations) {
+                const errors = e.response.data.propertyViolations
+                    .map(v => `${v.path}: ${v.message}`)
+                    .join('; ');
+                toast.error(`Ошибка валидации: ${errors}`);
+            } else if (e.response?.status === 400) {
+                toast.error('Некорректные данные');
+            } else {
+                toast.error('Ошибка создания');
             }
         }
-    }
+    };
 
     const saveWorker = async () => {
         try {
             const payload = {
-                ...workerForm,
+                name: workerForm.name,
+                salary: Number(workerForm.salary),
+                rating: Number(workerForm.rating) || null,
+                startDate: workerForm.startDate,
+                endDate: workerForm.endDate || null,
+                position: workerForm.position,
+                coordinates: workerForm.coordinates,
+                organization: workerForm.organization,
                 person: hasPerson ? workerForm.person : null
             };
-            const np = {
-                name: workerForm.name,
-                coordinates: workerForm.coordinates.id,
-                salary: workerForm.salary,
-                rating: workerForm.rating,
-                startDate: workerForm.startDate,
-                endDate: workerForm.endDate,
-                position: workerForm.position,
-                organization: workerForm.organization.id,
-                person: workerForm.person.id
-            }
 
             if (editingWorker) {
                 await axios.put(`${API_BASE}/workers/${editingWorker.id}`, payload);
             } else {
                 await axios.post(`${API_BASE}/workers`, payload);
             }
+
+            toast.success('Работник сохранён');
             setWorkerModalOpen(false);
             loadWorkers();
+
         } catch (e) {
             console.error(e);
-            toast.error('Ошибка сохранения');
+            if (e.response?.data?.propertyViolations) {
+                const errors = e.response.data.propertyViolations
+                    .map(v => `${v.path}: ${v.message}`)
+                    .join('; ');
+                toast.error(`Ошибка валидации: ${errors}`);
+            } else if (e.response?.status === 400) {
+                toast.error('Некорректные данные');
+            } else {
+                toast.error('Ошибка создания');
+            }
         }
     };
 

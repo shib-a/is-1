@@ -1,4 +1,4 @@
-package ru.itmo;
+package ru.itmo.config;
 import jakarta.ws.rs.ApplicationPath;
 import jakarta.ws.rs.core.Application;
 import com.fasterxml.jackson.databind.ObjectMapper;

@@ -2,6 +2,8 @@ package ru.itmo.service;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.NotFoundException;
+import ru.itmo.DTO.WorkerDTO;
+import ru.itmo.common.WorkerMapper;
 import ru.itmo.model.Organization;
 import ru.itmo.model.Person;
 import ru.itmo.model.Worker;
@@ -28,25 +30,43 @@ public class WorkerService {
     @Inject
     private EntityManager entityManager;
 
-    public Worker updateWorker(Long id, Worker worker) {
-        Worker existing = entityManager.find(Worker.class, id);
-        if (existing == null) throw new NoResultException("Person not found");
+    @Inject
+    private WorkerMapper mapper;
 
-
-        entityManager.getTransaction().begin();
-        worker.setId(id);
-        var res = entityManager.merge(worker);
+    public WorkerDTO updateWorker(Long id, WorkerDTO dto) {
+        Worker worker = entityManager.find(Worker.class, id);
+        if (worker == null) throw new NotFoundException("Worker not found");
+        mapper.updateFromDto(dto, worker);
+        if (dto.getOrganization() != null) {
+            worker.setOrganization(dto.getOrganization().getId() != null ?
+                    entityManager.getReference(Organization.class, dto.getOrganization().getId()) : null);
+        }
+        if (dto.getPerson() != null) {
+            worker.setPerson(dto.getPerson().getId() != null ?
+                    entityManager.getReference(Person.class, dto.getPerson().getId()) : null);
+        }
+        entityManager.merge(worker);
         entityManager.flush();
         entityManager.getTransaction().commit();
-        return res;
+        return mapper.toDto(worker);
     }
 
-    public Worker createWorker(Worker worker) {
+    public WorkerDTO createWorker(WorkerDTO dto) {
+        Worker worker = mapper.toEntity(dto);
+        System.out.println("Creating worker entity from DTO:" + worker.getName());
         entityManager.getTransaction().begin();
+        if (dto.getOrganization() != null && dto.getOrganization().getId() != null) {
+            Organization org = entityManager.getReference(Organization.class, dto.getOrganization().getId());
+            worker.setOrganization(org);
+        }
+        if (dto.getPerson() != null && dto.getPerson().getId() != null) {
+            Person p = entityManager.getReference(Person.class, dto.getPerson().getId());
+            worker.setPerson(p);
+        }
         entityManager.persist(worker);
         entityManager.flush();
         entityManager.getTransaction().commit();
-        return worker;
+        return mapper.toDto(worker);
     }
 
     public void deleteWorker(Long id) {
@@ -59,11 +79,11 @@ public class WorkerService {
         entityManager.getTransaction().commit();
     }
 
-    public Worker findWorkerById(Long id) {
-        return entityManager.find(Worker.class, id);
+    public WorkerDTO findWorkerById(Long id) {
+        return mapper.toDto(entityManager.find(Worker.class, id));
     }
 
-    public List<Worker> findAllWorkersPagedFiltered(int page, int pageSize, String sortField, String sortDirection, Map<String, String> filters) {
+    public List<WorkerDTO> findAllWorkersPagedFiltered(int page, int pageSize, String sortField, String sortDirection, Map<String, String> filters) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<Worker> cq = cb.createQuery(Worker.class);
         Root<Worker> root = cq.from(Worker.class);
@@ -101,15 +121,8 @@ public class WorkerService {
         query.setMaxResults(pageSize);
 
         List<Worker> results = query.getResultList();
-        return results;
+        return mapper.toDtoList(results);
     }
-
-
-    public Worker findById(Long id) {
-        return entityManager.find(Worker.class, id);
-    }
-
-
 
     public Map<Double, Long> groupBySalary() {
         return entityManager.createQuery(

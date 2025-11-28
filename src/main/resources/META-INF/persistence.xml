@@ -46,32 +46,32 @@
     <exclude-unlisted-classes>false</exclude-unlisted-classes>
 
     <properties>
-      <!-- JDBC connection (EclipseLink will use this directly) -->
+
       <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
       <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://localhost:5432/postgres?currentSchema=is"/>
       <property name="jakarta.persistence.jdbc.user" value="postgres"/>
       <property name="jakarta.persistence.jdbc.password" value="NUTd/6706"/>
 
-      <!-- Force schema -->
+
       <property name="eclipselink.jdbc.schema" value="is"/>
 
-      <!-- DDL — this will now actually run -->
+
       <property name="eclipselink.ddl-generation" value="drop-and-create-tables"/>
       <property name="eclipselink.ddl-generation.output-mode" value="database"/>
 
-      <!-- Force EclipseLink to run DDL on startup even in container -->
+
       <property name="eclipselink.deploy-on-startup" value="true"/>
 
-      <!-- Maximum logging — you will see every CREATE TABLE -->
+
       <property name="eclipselink.logging.level" value="FINEST"/>
       <property name="eclipselink.logging.parameters" value="true"/>
       <property name="eclipselink.logging.level.sql" value="FINE"/>
       <property name="eclipselink.logging.level.ddl" value="FINE"/>
 
-      <!-- Weaving off (as you had) -->
+
       <property name="eclipselink.weaving" value="false"/>
 
-      <!-- Jackson instead of MOXy -->
+
       <property name="eclipselink.media.type" value="application/json"/>
     </properties>
   </persistence-unit>

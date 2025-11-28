@@ -1,4 +1,4 @@
-package ru.itmo;
+package ru.itmo.config;
 
 import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebFilter;
