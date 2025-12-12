@@ -48,7 +48,7 @@ public class PersonController {
     }
 
     @POST
-    public Response create(@Valid Person person, @Context UriInfo uriInfo) {
+    public Response create(@Valid Person person) {
         Person created = personService.createPerson(person);
         return Response.ok().entity(created).build();
     }

@@ -9,7 +9,7 @@ import ru.itmo.DTO.*;
 import java.util.List;
 
 @ApplicationScoped
-@Mapper(componentModel = "cdi")
+@Mapper(componentModel = "cdi", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface WorkerMapper {
 
     WorkerMapper INSTANCE = Mappers.getMapper(WorkerMapper.class);
@@ -23,8 +23,19 @@ public interface WorkerMapper {
     AddressDTO addressToDto(Address address);
     LocationDTO locationToDto(Location location);
 
-
+    // Map simple fields, ignore entity references (will be set manually in service)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "creationDate", ignore = true)
+    @Mapping(target = "coordinates", ignore = true)
+    @Mapping(target = "organization", ignore = true)
+    @Mapping(target = "person", ignore = true)
     Worker toEntity(WorkerDTO dto);
 
+    // Update simple fields, ignore entity references and IDs
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "creationDate", ignore = true)
+    @Mapping(target = "coordinates", ignore = true)
+    @Mapping(target = "organization", ignore = true)
+    @Mapping(target = "person", ignore = true)
     void updateFromDto(WorkerDTO dto, @MappingTarget Worker worker);
 }

@@ -15,7 +15,7 @@ public class WorkerDTO {
     private CoordinatesDTO coordinates;
     private LocalDate creationDate;
     private OrganizationDTO organization;
-    private Float salary;
+    private Double salary;
     private Double rating;
     private LocalDate startDate;
     private Date endDate;

@@ -8,16 +8,10 @@ import ru.itmo.model.Organization;
 import ru.itmo.model.Person;
 import ru.itmo.model.Worker;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
-import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.TypedQuery;
-import jakarta.persistence.criteria.*;
-import jakarta.transaction.Transactional;
 import lombok.Data;
+import ru.itmo.repository.WorkerRepository;
 
-import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -28,152 +22,107 @@ import java.util.stream.Collectors;
 public class WorkerService {
 
     @Inject
-    private EntityManager entityManager;
+    private WorkerRepository workerRepository;
 
     @Inject
     private WorkerMapper mapper;
 
     public WorkerDTO updateWorker(Long id, WorkerDTO dto) {
-        Worker worker = entityManager.find(Worker.class, id);
+        Worker worker = workerRepository.findById(id);
         if (worker == null) throw new NotFoundException("Worker not found");
         mapper.updateFromDto(dto, worker);
+
+        // Handle coordinates reference
+        if (dto.getCoordinates() != null && dto.getCoordinates().getId() != null) {
+            worker.setCoordinates(workerRepository.getCoordinatesReference(dto.getCoordinates().getId()));
+        }
+
+        // Handle organization reference
         if (dto.getOrganization() != null) {
             worker.setOrganization(dto.getOrganization().getId() != null ?
-                    entityManager.getReference(Organization.class, dto.getOrganization().getId()) : null);
+                    workerRepository.getOrganizationReference(dto.getOrganization().getId()) : null);
         }
+
+        // Handle person reference (optional)
         if (dto.getPerson() != null) {
             worker.setPerson(dto.getPerson().getId() != null ?
-                    entityManager.getReference(Person.class, dto.getPerson().getId()) : null);
+                    workerRepository.getPersonReference(dto.getPerson().getId()) : null);
         }
-        entityManager.merge(worker);
-        entityManager.flush();
-        entityManager.getTransaction().commit();
-        return mapper.toDto(worker);
+
+        Worker updated = workerRepository.update(worker);
+        return mapper.toDto(updated);
     }
 
     public WorkerDTO createWorker(WorkerDTO dto) {
         Worker worker = mapper.toEntity(dto);
         System.out.println("Creating worker entity from DTO:" + worker.getName());
-        entityManager.getTransaction().begin();
+
+        // Handle coordinates reference
+        if (dto.getCoordinates() != null && dto.getCoordinates().getId() != null) {
+            worker.setCoordinates(workerRepository.getCoordinatesReference(dto.getCoordinates().getId()));
+        }
+
+        // Handle organization reference
         if (dto.getOrganization() != null && dto.getOrganization().getId() != null) {
-            Organization org = entityManager.getReference(Organization.class, dto.getOrganization().getId());
+            Organization org = workerRepository.getOrganizationReference(dto.getOrganization().getId());
             worker.setOrganization(org);
         }
+
+        // Handle person reference (optional)
         if (dto.getPerson() != null && dto.getPerson().getId() != null) {
-            Person p = entityManager.getReference(Person.class, dto.getPerson().getId());
+            Person p = workerRepository.getPersonReference(dto.getPerson().getId());
             worker.setPerson(p);
         }
-        entityManager.persist(worker);
-        entityManager.flush();
-        entityManager.getTransaction().commit();
-        return mapper.toDto(worker);
+
+        Worker created = workerRepository.create(worker);
+        return mapper.toDto(created);
     }
 
     public void deleteWorker(Long id) {
-        Worker worker = entityManager.find(Worker.class, id);
-        if (worker == null) throw new NoResultException("Address not found");
-
-        entityManager.getTransaction().begin();
-        entityManager.remove(worker);
-        entityManager.flush();
-        entityManager.getTransaction().commit();
+        Worker worker = workerRepository.findById(id);
+        if (worker == null) throw new NoResultException("Worker not found");
+        workerRepository.delete(worker);
     }
 
     public WorkerDTO findWorkerById(Long id) {
-        return mapper.toDto(entityManager.find(Worker.class, id));
+        return mapper.toDto(workerRepository.findById(id));
     }
 
     public List<WorkerDTO> findAllWorkersPagedFiltered(int page, int pageSize, String sortField, String sortDirection, Map<String, String> filters) {
-        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-        CriteriaQuery<Worker> cq = cb.createQuery(Worker.class);
-        Root<Worker> root = cq.from(Worker.class);
-
-        List<Predicate> predicates = new ArrayList<>();
-        if (filters != null && !filters.isEmpty()) {
-            for (Map.Entry<String, String> entry : filters.entrySet()) {
-                String field = entry.getKey();
-                String pattern = "%" + entry.getValue().toLowerCase() + "%";
-
-                Expression<String> fieldExpr;
-                try {
-                    fieldExpr = root.get(field).as(String.class);
-                    Predicate likePredicate = cb.like(cb.lower(fieldExpr), pattern);
-                    predicates.add(likePredicate);
-                } catch (IllegalArgumentException e) {
-                    fieldExpr = cb.function("CAST", String.class, root.get(field), cb.literal("TEXT"));
-                    Predicate likePredicate = cb.like(cb.lower(fieldExpr), pattern);
-                    predicates.add(likePredicate);
-                }
-            }
-        }
-
-        if (!predicates.isEmpty()) {
-            cq.where(cb.or(predicates.toArray(new Predicate[0])));
-        }
-
-        if (sortField != null && !sortField.isEmpty() && sortDirection != null && !sortDirection.isEmpty()) {
-            Order order = sortDirection.equals("asc") ? cb.asc(root.get(sortField)) : cb.desc(root.get(sortField));
-            cq.orderBy(order);
-        }
-
-        TypedQuery<Worker> query = entityManager.createQuery(cq);
-        query.setFirstResult(page * pageSize);
-        query.setMaxResults(pageSize);
-
-        List<Worker> results = query.getResultList();
+        List<Worker> results = workerRepository.findAllPagedFiltered(page, pageSize, sortField, sortDirection, filters);
         return mapper.toDtoList(results);
     }
 
     public Map<Double, Long> groupBySalary() {
-        return entityManager.createQuery(
-                        "SELECT w.salary, COUNT(w) FROM Worker w GROUP BY w.salary ORDER BY w.salary",
-                        Object[].class)
-                .getResultList()
+        return workerRepository.groupBySalary()
                 .stream()
                 .collect(Collectors.toMap(
                         arr -> (Double) arr[0],
                         arr -> (Long) arr[1]
                 ));
     }
+
     public long countByEndDate(Date endDate) {
         if (endDate == null) {
-            return entityManager.createQuery("SELECT COUNT(w) FROM Worker w WHERE w.endDate IS NULL", Long.class)
-                    .getSingleResult();
+            return workerRepository.countByEndDateNull();
         }
-        return entityManager.createQuery("SELECT COUNT(w) FROM Worker w WHERE w.endDate = :endDate", Long.class)
-                .setParameter("endDate", endDate)
-                .getSingleResult();
+        return workerRepository.countByEndDate(endDate);
     }
 
     public List<Worker> findByNameContaining(String substring) {
         String pattern = "%" + substring.toLowerCase() + "%";
-        return entityManager.createQuery(
-                        "SELECT w FROM Worker w WHERE LOWER(w.name) LIKE :pattern",
-                        Worker.class)
-                .setParameter("pattern", pattern)
-                .getResultList();
+        return workerRepository.findByNameContaining(pattern);
     }
 
     public void indexSalaryForWorker(Long workerId, double coefficient) {
-        Worker worker = entityManager.find(Worker.class, workerId);
+        Worker worker = workerRepository.findById(workerId);
         if (worker == null) throw new NotFoundException("Worker not found");
-        entityManager.getTransaction().begin();
         worker.setSalary(worker.getSalary() * coefficient);
-        entityManager.merge(worker);
-        entityManager.flush();
-        entityManager.getTransaction().commit();
+        workerRepository.update(worker);
     }
 
     public void indexSalaryForOrganization(Long organizationId, double coefficient) {
-        entityManager.getTransaction().begin();
-        int updated = entityManager.createQuery(
-                        "UPDATE Worker w SET w.salary = w.salary * :coef " +
-                                "WHERE w.organization.id = :orgId")
-                .setParameter("coef", coefficient)
-                .setParameter("orgId", organizationId)
-                .executeUpdate();
-        entityManager.flush();
-        entityManager.getTransaction().commit();
+        int updated = workerRepository.updateSalaryForOrganization(organizationId, coefficient);
         if (updated == 0) {
             throw new NotFoundException("No workers found in organization or organization not found");
         }

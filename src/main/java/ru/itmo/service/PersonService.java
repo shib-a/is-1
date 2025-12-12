@@ -2,18 +2,11 @@ package ru.itmo.service;
 
 import jakarta.inject.Inject;
 import jakarta.persistence.NoResultException;
-import jakarta.transaction.Transactional;
-import ru.itmo.model.Address;
-import ru.itmo.model.Coordinates;
 import ru.itmo.model.Person;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.TypedQuery;
-import jakarta.persistence.criteria.*;
 import lombok.Data;
+import ru.itmo.repository.PersonRepository;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -22,84 +15,31 @@ import java.util.Map;
 public class PersonService {
 
     @Inject
-    private EntityManager entityManager;
+    private PersonRepository personRepository;
 
     public Person createPerson(Person person) {
-        entityManager.getTransaction().begin();
-        entityManager.persist(person);
-        entityManager.flush();
-        entityManager.getTransaction().commit();
-        return person;
+        return personRepository.create(person);
     }
+
     public List<Person> findAllPersonsPagedFiltered(int page, int pageSize, String sortField, String sortDirection, Map<String, String> filters) {
-        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-        CriteriaQuery<Person> cq = cb.createQuery(Person.class);
-        Root<Person> root = cq.from(Person.class);
-
-        List<Predicate> predicates = new ArrayList<>();
-        if (filters != null && !filters.isEmpty()) {
-            for (Map.Entry<String, String> entry : filters.entrySet()) {
-                String field = entry.getKey();
-                String pattern = "%" + entry.getValue().toLowerCase() + "%";
-
-                Expression<String> fieldExpr;
-                try {
-                    fieldExpr = root.get(field).as(String.class);
-                    Predicate likePredicate = cb.like(cb.lower(fieldExpr), pattern);
-                    predicates.add(likePredicate);
-                } catch (IllegalArgumentException e) {
-                    fieldExpr = cb.function("CAST", String.class, root.get(field), cb.literal("TEXT"));
-                    Predicate likePredicate = cb.like(cb.lower(fieldExpr), pattern);
-                    predicates.add(likePredicate);
-                }
-            }
-        }
-
-        if (!predicates.isEmpty()) {
-            cq.where(cb.or(predicates.toArray(new Predicate[0])));
-        }
-
-        if (sortField != null && !sortField.isEmpty() && sortDirection != null && !sortDirection.isEmpty()) {
-            Order order = sortDirection.equals("asc") ? cb.asc(root.get(sortField)) : cb.desc(root.get(sortField));
-            cq.orderBy(order);
-        }
-
-        TypedQuery<Person> query = entityManager.createQuery(cq);
-        query.setFirstResult(page * pageSize);
-        query.setMaxResults(pageSize);
-
-        return query.getResultList();
+        return personRepository.findAllPagedFiltered(page, pageSize, sortField, sortDirection, filters);
     }
 
     public Person updatePerson(Long id, Person person) {
-        Person existing = entityManager.find(Person.class, id);
-        if (existing == null) throw new NoResultException("Person not found");
-
-        entityManager.getTransaction().begin();
-        person.setId(id);
-        var res = entityManager.merge(person);
-        entityManager.flush();
-        entityManager.getTransaction().commit();
-        return res;
+        return personRepository.update(id, person);
     }
 
     public void deletePerson(Long id) {
-        Person person = entityManager.find(Person.class, id);
-        if (person == null) throw new NoResultException("Address not found");
-
-        entityManager.getTransaction().begin();
-        entityManager.remove(person);
-        entityManager.flush();
-        entityManager.getTransaction().commit();
+        Person person = personRepository.findById(id);
+        if (person == null) throw new NoResultException("Person not found");
+        personRepository.delete(person);
     }
 
     public Person findPersonById(Long id) {
-        return entityManager.find(Person.class, id);
+        return personRepository.findById(id);
     }
 
     public List<Person> findAllPersonsTruncated() {
-        TypedQuery<Person> query = entityManager.createQuery("SELECT p FROM Person p ORDER BY p.id DESC", Person.class);
-        query.setMaxResults(10);
-        return query.getResultList();
+        return personRepository.findAllTruncated();
     }
 }

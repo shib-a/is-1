@@ -16,7 +16,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import dayjs from 'dayjs';
 import { Toaster, toast } from 'react-hot-toast';
 
-const API_BASE = 'http://localhost:8081/is-1-1.0-SNAPSHOT/api';
+const API_BASE = 'http://localhost:25203/is-1-1.0-SNAPSHOT/api';
 const POLLING_INTERVAL = 5000;
 
 function App() {
@@ -699,15 +699,6 @@ function App() {
                                 </Button>
                             </Grid>
 
-
-                            <Grid item xs={12}>
-                                <FormControlLabel
-                                    control={<Checkbox checked={hasPerson} onChange={e => setHasPerson(e.target.checked)} />}
-                                    label="Добавить человека"
-                                />
-                            </Grid>
-
-                            {hasPerson && (
                                 <Grid item xs={12} md={6}>
                                     <FormControl fullWidth>
                                         <InputLabel>Человек</InputLabel>
@@ -726,7 +717,6 @@ function App() {
                                         Новый человек
                                     </Button>
                                 </Grid>
-                            )}
                         </Grid>
                     </DialogContent>
                     <DialogActions>

@@ -48,9 +48,9 @@
     <properties>
 
       <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
-      <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://localhost:5432/postgres?currentSchema=is"/>
-      <property name="jakarta.persistence.jdbc.user" value="postgres"/>
-      <property name="jakarta.persistence.jdbc.password" value="NUTd/6706"/>
+      <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://pg:5432/studs"/>
+      <property name="jakarta.persistence.jdbc.user" value="s409091"/>
+      <property name="jakarta.persistence.jdbc.password" value="0QdjvOPZ6gsasXOL"/>
 
 
       <property name="eclipselink.jdbc.schema" value="is"/>
