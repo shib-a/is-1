@@ -48,6 +48,7 @@ function App() {
     const [editingEntity, setEditingEntity] = useState(null);
     const [editingEntityType, setEditingEntityType] = useState('');
     const [editForm, setEditForm] = useState({});
+    const [selectedDate, setSelectedDate] = useState(null);
 
     const openEditModal = (entity, type) => {
         setEditingEntity(entity);
@@ -560,13 +561,24 @@ function App() {
                             <DatePicker
                                 label="Дата окончания"
                                 slotProps={{ textField: { fullWidth: true } }}
-                                onChange={async (date) => {
-                                    if (!date) return;
-                                    const iso = date.format('YYYY-MM-DD');
-                                    const res = await axios.get(`${API_BASE}/workers/count/enddate?date=${iso}`);
-                                    toast.success(`Сотрудников с endDate = ${iso}: ${res.data}`);
-                                }}
+                                value={dayjs(selectedDate)}
+                                onChange={(date) => setSelectedDate(dayjs(date))}
                             />
+                            <Button
+                                variant="contained"
+                                onClick={async () => {
+                                    if (!selectedDate) return;
+                                    const iso = dayjs(selectedDate).format('YYYY-MM-DD');
+                                    try {
+                                        const res = await axios.get(`${API_BASE}/workers/count/enddate?date=${iso}`);
+                                        toast.success(`Сотрудников с endDate = ${iso}: ${res.data}`);
+                                    } catch (error) {
+                                        toast.error(`Error fetching data: ${error.message}`);
+                                    }
+                                }}
+                            >
+                                Найти
+                            </Button>
                         </Grid>
 
 

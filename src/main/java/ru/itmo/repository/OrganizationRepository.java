@@ -1,0 +1,104 @@
+package ru.itmo.repository;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.persistence.*;
+import jakarta.persistence.criteria.*;
+import ru.itmo.model.Organization;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+@ApplicationScoped
+public class OrganizationRepository {
+    @Inject
+    private EntityManager entityManager;
+
+    public List<Organization> findAllPagedFiltered(int page, int pageSize, String sortField, String sortDirection, Map<String, String> filters) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Organization> cq = cb.createQuery(Organization.class);
+        Root<Organization> root = cq.from(Organization.class);
+
+        List<Predicate> predicates = new ArrayList<>();
+        if (filters != null && !filters.isEmpty()) {
+            for (Map.Entry<String, String> entry : filters.entrySet()) {
+                String field = entry.getKey();
+                String pattern = "%" + entry.getValue().toLowerCase() + "%";
+
+                Expression<String> fieldExpr;
+                try {
+                    fieldExpr = root.get(field).as(String.class);
+                    Predicate likePredicate = cb.like(cb.lower(fieldExpr), pattern);
+                    predicates.add(likePredicate);
+                } catch (IllegalArgumentException e) {
+                    fieldExpr = cb.function("CAST", String.class, root.get(field), cb.literal("TEXT"));
+                    Predicate likePredicate = cb.like(cb.lower(fieldExpr), pattern);
+                    predicates.add(likePredicate);
+                }
+            }
+        }
+
+        if (!predicates.isEmpty()) {
+            cq.where(cb.or(predicates.toArray(new Predicate[0])));
+        }
+
+        if (sortField != null && !sortField.isEmpty() && sortDirection != null && !sortDirection.isEmpty()) {
+            Order order = sortDirection.equals("asc") ? cb.asc(root.get(sortField)) : cb.desc(root.get(sortField));
+            cq.orderBy(order);
+        }
+
+        TypedQuery<Organization> query = entityManager.createQuery(cq);
+        query.setFirstResult(page * pageSize);
+        query.setMaxResults(pageSize);
+
+        return query.getResultList();
+    }
+
+    public Organization create(Organization organization) {
+        entityManager.getTransaction().begin();
+        entityManager.persist(organization);
+        entityManager.flush();
+        entityManager.getTransaction().commit();
+        return organization;
+    }
+
+    public Organization findById(Long id) {
+        return entityManager.find(Organization.class, id);
+    }
+
+    public Organization update(Long id, Organization organization) {
+        Organization existing = entityManager.find(Organization.class, id);
+        if (existing == null) throw new NoResultException("Organization not found");
+
+        entityManager.getTransaction().begin();
+        organization.setId(id);
+        var res = entityManager.merge(organization);
+        entityManager.flush();
+        entityManager.getTransaction().commit();
+        return res;
+    }
+
+    public void delete(Organization organization) {
+        entityManager.getTransaction().begin();
+        entityManager.remove(organization);
+        entityManager.flush();
+        entityManager.getTransaction().commit();
+    }
+
+    public List<Organization> findAllTruncated() {
+        TypedQuery<Organization> query = entityManager.createQuery("SELECT o FROM Organization o ORDER BY o.id DESC", Organization.class);
+        query.setMaxResults(10);
+        return query.getResultList();
+    }
+
+    public void deleteWithReassign(Organization org, Organization target) {
+        if (!org.getWorkers().isEmpty()) {
+            org.getWorkers().forEach(w -> {
+                w.setOrganization(target);
+                target.setEmployeesCount(target.getEmployeesCount() + 1);
+            });
+        }
+        entityManager.remove(org);
+    }
+}

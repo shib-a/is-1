@@ -13,6 +13,7 @@ import jakarta.ws.rs.core.Response;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.Date;
 import java.util.HashMap;
@@ -84,7 +85,8 @@ public class WorkerController {
         if (dateString != null && !dateString.isBlank()) {
             try {
                 date = LocalDate.parse(dateString);
-                return workerService.countByEndDate(Date.from(Instant.from(date)));
+                Instant instant = date.atStartOfDay(ZoneOffset.UTC).toInstant();
+                return workerService.countByEndDate(Date.from(instant));
             } catch (DateTimeParseException e) {
                 throw new BadRequestException("Неверный формат даты");
             }
