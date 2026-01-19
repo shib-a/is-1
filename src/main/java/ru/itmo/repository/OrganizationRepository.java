@@ -24,28 +24,43 @@ public class OrganizationRepository {
         if (filters != null && !filters.isEmpty()) {
             for (Map.Entry<String, String> entry : filters.entrySet()) {
                 String field = entry.getKey();
-                String pattern = "%" + entry.getValue().toLowerCase() + "%";
+                String value = entry.getValue();
 
-                Expression<String> fieldExpr;
                 try {
-                    fieldExpr = root.get(field).as(String.class);
-                    Predicate likePredicate = cb.like(cb.lower(fieldExpr), pattern);
-                    predicates.add(likePredicate);
+                    Expression<?> fieldExpr = root.get(field);
+                    Class<?> fieldType = fieldExpr.getJavaType();
+
+                    if (fieldType == String.class) {
+                        Predicate equalPredicate = cb.equal(cb.lower(fieldExpr.as(String.class)), value.toLowerCase());
+                        predicates.add(equalPredicate);
+                    } else if (fieldType.isEnum()) {
+                        try {
+                            Enum enumValue = Enum.valueOf((Class<Enum>) fieldType, value.toUpperCase());
+                            Predicate equalPredicate = cb.equal(fieldExpr, enumValue);
+                            predicates.add(equalPredicate);
+                        } catch (IllegalArgumentException e) {
+                        }
+                    } else {
+                        Predicate equalPredicate = cb.equal(fieldExpr.as(String.class), value);
+                        predicates.add(equalPredicate);
+                    }
                 } catch (IllegalArgumentException e) {
-                    fieldExpr = cb.function("CAST", String.class, root.get(field), cb.literal("TEXT"));
-                    Predicate likePredicate = cb.like(cb.lower(fieldExpr), pattern);
-                    predicates.add(likePredicate);
                 }
             }
         }
 
         if (!predicates.isEmpty()) {
-            cq.where(cb.or(predicates.toArray(new Predicate[0])));
+            cq.where(cb.and(predicates.toArray(new Predicate[0])));
         }
 
         if (sortField != null && !sortField.isEmpty() && sortDirection != null && !sortDirection.isEmpty()) {
-            Order order = sortDirection.equals("asc") ? cb.asc(root.get(sortField)) : cb.desc(root.get(sortField));
-            cq.orderBy(order);
+            try {
+                Order order = sortDirection.equals("asc") ? cb.asc(root.get(sortField)) : cb.desc(root.get(sortField));
+                cq.orderBy(order);
+            } catch (IllegalArgumentException e) {
+                Order order = sortDirection.equals("asc") ? cb.asc(root.get("id")) : cb.desc(root.get("id"));
+                cq.orderBy(order);
+            }
         }
 
         TypedQuery<Organization> query = entityManager.createQuery(cq);
@@ -56,10 +71,8 @@ public class OrganizationRepository {
     }
 
     public Organization create(Organization organization) {
-        entityManager.getTransaction().begin();
         entityManager.persist(organization);
         entityManager.flush();
-        entityManager.getTransaction().commit();
         return organization;
     }
 
@@ -67,23 +80,27 @@ public class OrganizationRepository {
         return entityManager.find(Organization.class, id);
     }
 
+    public Organization findByIdOrNull(Long id) {
+        return entityManager.find(Organization.class, id);
+    }
+
+    public void persistInTransaction(Organization organization) {
+        entityManager.persist(organization);
+    }
+
     public Organization update(Long id, Organization organization) {
         Organization existing = entityManager.find(Organization.class, id);
         if (existing == null) throw new NoResultException("Organization not found");
 
-        entityManager.getTransaction().begin();
         organization.setId(id);
         var res = entityManager.merge(organization);
         entityManager.flush();
-        entityManager.getTransaction().commit();
         return res;
     }
 
     public void delete(Organization organization) {
-        entityManager.getTransaction().begin();
         entityManager.remove(organization);
         entityManager.flush();
-        entityManager.getTransaction().commit();
     }
 
     public List<Organization> findAllTruncated() {

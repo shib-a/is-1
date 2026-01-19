@@ -24,28 +24,43 @@ public class CoordinatesRepository {
         if (filters != null && !filters.isEmpty()) {
             for (Map.Entry<String, String> entry : filters.entrySet()) {
                 String field = entry.getKey();
-                String pattern = "%" + entry.getValue().toLowerCase() + "%";
+                String value = entry.getValue();
 
-                Expression<String> fieldExpr;
                 try {
-                    fieldExpr = root.get(field).as(String.class);
-                    Predicate likePredicate = cb.like(cb.lower(fieldExpr), pattern);
-                    predicates.add(likePredicate);
+                    Expression<?> fieldExpr = root.get(field);
+                    Class<?> fieldType = fieldExpr.getJavaType();
+
+                    if (fieldType == String.class) {
+                        Predicate equalPredicate = cb.equal(cb.lower(fieldExpr.as(String.class)), value.toLowerCase());
+                        predicates.add(equalPredicate);
+                    } else if (fieldType.isEnum()) {
+                        try {
+                            Enum enumValue = Enum.valueOf((Class<Enum>) fieldType, value.toUpperCase());
+                            Predicate equalPredicate = cb.equal(fieldExpr, enumValue);
+                            predicates.add(equalPredicate);
+                        } catch (IllegalArgumentException e) {
+                        }
+                    } else {
+                        Predicate equalPredicate = cb.equal(fieldExpr.as(String.class), value);
+                        predicates.add(equalPredicate);
+                    }
                 } catch (IllegalArgumentException e) {
-                    fieldExpr = cb.function("CAST", String.class, root.get(field), cb.literal("TEXT"));
-                    Predicate likePredicate = cb.like(cb.lower(fieldExpr), pattern);
-                    predicates.add(likePredicate);
                 }
             }
         }
 
         if (!predicates.isEmpty()) {
-            cq.where(cb.or(predicates.toArray(new Predicate[0])));
+            cq.where(cb.and(predicates.toArray(new Predicate[0])));
         }
 
         if (sortField != null && !sortField.isEmpty() && sortDirection != null && !sortDirection.isEmpty()) {
-            Order order = sortDirection.equals("asc") ? cb.asc(root.get(sortField)) : cb.desc(root.get(sortField));
-            cq.orderBy(order);
+            try {
+                Order order = sortDirection.equals("asc") ? cb.asc(root.get(sortField)) : cb.desc(root.get(sortField));
+                cq.orderBy(order);
+            } catch (IllegalArgumentException e) {
+                Order order = sortDirection.equals("asc") ? cb.asc(root.get("id")) : cb.desc(root.get("id"));
+                cq.orderBy(order);
+            }
         }
 
         TypedQuery<Coordinates> query = entityManager.createQuery(cq);
@@ -56,10 +71,8 @@ public class CoordinatesRepository {
     }
 
     public Coordinates create(Coordinates coordinates) {
-        entityManager.getTransaction().begin();
         entityManager.persist(coordinates);
         entityManager.flush();
-        entityManager.getTransaction().commit();
         return coordinates;
     }
 
@@ -67,23 +80,34 @@ public class CoordinatesRepository {
         return entityManager.find(Coordinates.class, id);
     }
 
+    public Coordinates findByIdOrNull(Long id) {
+        return entityManager.find(Coordinates.class, id);
+    }
+
+    public void persistInTransaction(Coordinates coordinates) {
+        entityManager.persist(coordinates);
+    }
+
     public Coordinates update(Long id, Coordinates coordinates) {
         Coordinates existing = entityManager.find(Coordinates.class, id);
         if (existing == null) throw new NoResultException("Coordinates not found");
 
-        entityManager.getTransaction().begin();
         coordinates.setId(id);
         var res = entityManager.merge(coordinates);
         entityManager.flush();
-        entityManager.getTransaction().commit();
         return res;
     }
 
     public void delete(Coordinates coordinates) {
-        entityManager.getTransaction().begin();
         entityManager.remove(coordinates);
         entityManager.flush();
-        entityManager.getTransaction().commit();
+    }
+
+    public void nullifyWorkerReferences(Long coordinatesId) {
+        entityManager.createQuery("UPDATE Worker w SET w.coordinates = NULL WHERE w.coordinates.id = :coordsId")
+                .setParameter("coordsId", coordinatesId)
+                .executeUpdate();
+        entityManager.flush();
     }
 
     public List<Coordinates> findAllTruncated() {

@@ -24,27 +24,26 @@ public class WorkerRepository {
     }
 
     public Worker update(Worker worker) {
-        entityManager.getTransaction().begin();
         Worker result = entityManager.merge(worker);
         entityManager.flush();
-        entityManager.getTransaction().commit();
         return result;
     }
 
     public Worker create(Worker worker) {
-        entityManager.getTransaction().begin();
         entityManager.persist(worker);
         entityManager.flush();
-        entityManager.getTransaction().commit();
         return worker;
     }
 
     public void delete(Worker worker) {
-        entityManager.getTransaction().begin();
         entityManager.remove(worker);
         entityManager.flush();
-        entityManager.getTransaction().commit();
     }
+
+    public void persistWorker(Worker worker) {
+        entityManager.persist(worker);
+    }
+
 
     public Organization getOrganizationReference(Long id) {
         return entityManager.getReference(Organization.class, id);
@@ -67,28 +66,43 @@ public class WorkerRepository {
         if (filters != null && !filters.isEmpty()) {
             for (Map.Entry<String, String> entry : filters.entrySet()) {
                 String field = entry.getKey();
-                String pattern = "%" + entry.getValue().toLowerCase() + "%";
+                String value = entry.getValue();
 
-                Expression<String> fieldExpr;
                 try {
-                    fieldExpr = root.get(field).as(String.class);
-                    Predicate likePredicate = cb.like(cb.lower(fieldExpr), pattern);
-                    predicates.add(likePredicate);
+                    Expression<?> fieldExpr = root.get(field);
+                    Class<?> fieldType = fieldExpr.getJavaType();
+
+                    if (fieldType == String.class) {
+                        Predicate equalPredicate = cb.equal(cb.lower(fieldExpr.as(String.class)), value.toLowerCase());
+                        predicates.add(equalPredicate);
+                    } else if (fieldType.isEnum()) {
+                        try {
+                            Enum enumValue = Enum.valueOf((Class<Enum>) fieldType, value.toUpperCase());
+                            Predicate equalPredicate = cb.equal(fieldExpr, enumValue);
+                            predicates.add(equalPredicate);
+                        } catch (IllegalArgumentException e) {
+                        }
+                    } else {
+                        Predicate equalPredicate = cb.equal(fieldExpr.as(String.class), value);
+                        predicates.add(equalPredicate);
+                    }
                 } catch (IllegalArgumentException e) {
-                    fieldExpr = cb.function("CAST", String.class, root.get(field), cb.literal("TEXT"));
-                    Predicate likePredicate = cb.like(cb.lower(fieldExpr), pattern);
-                    predicates.add(likePredicate);
                 }
             }
         }
 
         if (!predicates.isEmpty()) {
-            cq.where(cb.or(predicates.toArray(new Predicate[0])));
+            cq.where(cb.and(predicates.toArray(new Predicate[0])));
         }
 
         if (sortField != null && !sortField.isEmpty() && sortDirection != null && !sortDirection.isEmpty()) {
-            Order order = sortDirection.equals("asc") ? cb.asc(root.get(sortField)) : cb.desc(root.get(sortField));
-            cq.orderBy(order);
+            try {
+                Order order = sortDirection.equals("asc") ? cb.asc(root.get(sortField)) : cb.desc(root.get(sortField));
+                cq.orderBy(order);
+            } catch (IllegalArgumentException e) {
+                Order order = sortDirection.equals("asc") ? cb.asc(root.get("id")) : cb.desc(root.get("id"));
+                cq.orderBy(order);
+            }
         }
 
         TypedQuery<Worker> query = entityManager.createQuery(cq);
@@ -112,7 +126,7 @@ public class WorkerRepository {
 
     public long countByEndDate(Date endDate) {
         return entityManager.createQuery("SELECT COUNT(w) FROM Worker w WHERE w.endDate = :endDate", Long.class)
-                .setParameter("endDate", endDate)
+                .setParameter("endDate", endDate, TemporalType.DATE)
                 .getSingleResult();
     }
 
@@ -125,7 +139,6 @@ public class WorkerRepository {
     }
 
     public int updateSalaryForOrganization(Long organizationId, double coefficient) {
-        entityManager.getTransaction().begin();
         int updated = entityManager.createQuery(
                         "UPDATE Worker w SET w.salary = w.salary * :coef " +
                                 "WHERE w.organization.id = :orgId")
@@ -133,7 +146,6 @@ public class WorkerRepository {
                 .setParameter("orgId", organizationId)
                 .executeUpdate();
         entityManager.flush();
-        entityManager.getTransaction().commit();
         return updated;
     }
 }

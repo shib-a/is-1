@@ -15,10 +15,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static ru.itmo.common.FilterParser.parseFilters;
 
@@ -39,7 +36,7 @@ public class WorkerController {
         Map<String, String> filterMap = parseFilters(filter);
         return workerService.findAllWorkersPagedFiltered(page, size, sort, dir, filterMap);
     }
-    // Получение одного работника по id
+
     @GET
     @Path("/{id}")
     public WorkerDTO get(@PathParam("id") @NotNull Long id) {
@@ -56,7 +53,6 @@ public class WorkerController {
         return Response.ok().entity(created).build();
     }
 
-    // Update a worker by ID
     @PUT
     @Path("/{id}")
     public WorkerDTO update(
@@ -113,5 +109,6 @@ public class WorkerController {
         workerService.indexSalaryForOrganization(id, coef);
         return Response.ok().build();
     }
+
 
 }

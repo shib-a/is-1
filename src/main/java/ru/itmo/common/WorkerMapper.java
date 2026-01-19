@@ -23,7 +23,6 @@ public interface WorkerMapper {
     AddressDTO addressToDto(Address address);
     LocationDTO locationToDto(Location location);
 
-    // Map simple fields, ignore entity references (will be set manually in service)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "creationDate", ignore = true)
     @Mapping(target = "coordinates", ignore = true)
@@ -31,11 +30,10 @@ public interface WorkerMapper {
     @Mapping(target = "person", ignore = true)
     Worker toEntity(WorkerDTO dto);
 
-    // Update simple fields, ignore entity references and IDs
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "creationDate", ignore = true)
     @Mapping(target = "coordinates", ignore = true)
     @Mapping(target = "organization", ignore = true)
     @Mapping(target = "person", ignore = true)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "creationDate", ignore = true)
     void updateFromDto(WorkerDTO dto, @MappingTarget Worker worker);
 }

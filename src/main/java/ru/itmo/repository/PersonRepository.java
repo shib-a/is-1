@@ -24,28 +24,43 @@ public class PersonRepository {
         if (filters != null && !filters.isEmpty()) {
             for (Map.Entry<String, String> entry : filters.entrySet()) {
                 String field = entry.getKey();
-                String pattern = "%" + entry.getValue().toLowerCase() + "%";
+                String value = entry.getValue();
 
-                Expression<String> fieldExpr;
                 try {
-                    fieldExpr = root.get(field).as(String.class);
-                    Predicate likePredicate = cb.like(cb.lower(fieldExpr), pattern);
-                    predicates.add(likePredicate);
+                    Expression<?> fieldExpr = root.get(field);
+                    Class<?> fieldType = fieldExpr.getJavaType();
+
+                    if (fieldType == String.class) {
+                        Predicate equalPredicate = cb.equal(cb.lower(fieldExpr.as(String.class)), value.toLowerCase());
+                        predicates.add(equalPredicate);
+                    } else if (fieldType.isEnum()) {
+                        try {
+                            Enum enumValue = Enum.valueOf((Class<Enum>) fieldType, value.toUpperCase());
+                            Predicate equalPredicate = cb.equal(fieldExpr, enumValue);
+                            predicates.add(equalPredicate);
+                        } catch (IllegalArgumentException e) {
+                        }
+                    } else {
+                        Predicate equalPredicate = cb.equal(fieldExpr.as(String.class), value);
+                        predicates.add(equalPredicate);
+                    }
                 } catch (IllegalArgumentException e) {
-                    fieldExpr = cb.function("CAST", String.class, root.get(field), cb.literal("TEXT"));
-                    Predicate likePredicate = cb.like(cb.lower(fieldExpr), pattern);
-                    predicates.add(likePredicate);
                 }
             }
         }
 
         if (!predicates.isEmpty()) {
-            cq.where(cb.or(predicates.toArray(new Predicate[0])));
+            cq.where(cb.and(predicates.toArray(new Predicate[0])));
         }
 
         if (sortField != null && !sortField.isEmpty() && sortDirection != null && !sortDirection.isEmpty()) {
-            Order order = sortDirection.equals("asc") ? cb.asc(root.get(sortField)) : cb.desc(root.get(sortField));
-            cq.orderBy(order);
+            try {
+                Order order = sortDirection.equals("asc") ? cb.asc(root.get(sortField)) : cb.desc(root.get(sortField));
+                cq.orderBy(order);
+            } catch (IllegalArgumentException e) {
+                Order order = sortDirection.equals("asc") ? cb.asc(root.get("id")) : cb.desc(root.get("id"));
+                cq.orderBy(order);
+            }
         }
 
         TypedQuery<Person> query = entityManager.createQuery(cq);
@@ -56,10 +71,8 @@ public class PersonRepository {
     }
 
     public Person create(Person person) {
-        entityManager.getTransaction().begin();
         entityManager.persist(person);
         entityManager.flush();
-        entityManager.getTransaction().commit();
         return person;
     }
 
@@ -67,28 +80,56 @@ public class PersonRepository {
         return entityManager.find(Person.class, id);
     }
 
+    public Person findByIdOrNull(Long id) {
+        return entityManager.find(Person.class, id);
+    }
+
+    public void persistInTransaction(Person person) {
+        entityManager.persist(person);
+    }
+
     public Person update(Long id, Person person) {
         Person existing = entityManager.find(Person.class, id);
         if (existing == null) throw new NoResultException("Person not found");
 
-        entityManager.getTransaction().begin();
         person.setId(id);
         var res = entityManager.merge(person);
         entityManager.flush();
-        entityManager.getTransaction().commit();
         return res;
     }
 
     public void delete(Person person) {
-        entityManager.getTransaction().begin();
         entityManager.remove(person);
         entityManager.flush();
-        entityManager.getTransaction().commit();
+    }
+
+    public void nullifyWorkerReferences(Long personId) {
+        entityManager.createQuery("UPDATE Worker w SET w.person = NULL WHERE w.person.id = :personId")
+                .setParameter("personId", personId)
+                .executeUpdate();
+        entityManager.flush();
     }
 
     public List<Person> findAllTruncated() {
         TypedQuery<Person> query = entityManager.createQuery("SELECT p FROM Person p ORDER BY p.id DESC", Person.class);
         query.setMaxResults(10);
         return query.getResultList();
+    }
+
+    public boolean existsByPassportID(String passportID) {
+        if (passportID == null) return false;
+        TypedQuery<Long> query = entityManager.createQuery(
+                "SELECT COUNT(p) FROM Person p WHERE p.passportID = :passportID", Long.class);
+        query.setParameter("passportID", passportID);
+        return query.getSingleResult() > 0;
+    }
+
+    public boolean existsByPassportIDExcludingId(String passportID, Long excludeId) {
+        if (passportID == null) return false;
+        TypedQuery<Long> query = entityManager.createQuery(
+                "SELECT COUNT(p) FROM Person p WHERE p.passportID = :passportID AND p.id <> :excludeId", Long.class);
+        query.setParameter("passportID", passportID);
+        query.setParameter("excludeId", excludeId);
+        return query.getSingleResult() > 0;
     }
 }

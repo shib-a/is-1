@@ -40,8 +40,8 @@ public class OrganizationController {
     }
 
     @GET
-    @Path("/get")
-    public Organization get(@QueryParam("id") @NotNull Long id) {
+    @Path("/{id}")
+    public Organization get(@PathParam("id") @NotNull Long id) {
         Organization org = organizationService.findOrganizationById(id);
         if (org == null) throw new NotFoundException("Organization not found");
         return org;
@@ -54,17 +54,17 @@ public class OrganizationController {
     }
 
     @PUT
-    @Path("/update")
+    @Path("/{id}")
     public Organization update(
-            @QueryParam("id") @NotNull Long id,
+            @PathParam("id") @NotNull Long id,
             @Valid Organization org) {
         return organizationService.updateOrganization(id, org);
     }
 
     @DELETE
-    @Path("/delete")
+    @Path("/{id}")
     public Response delete(
-            @QueryParam("id") @NotNull Long id,
+            @PathParam("id") @NotNull Long id,
             @QueryParam("newOrgId") @NotNull Long newOrgId) {
         organizationService.deleteWithReassign(id, newOrgId);
         return Response.noContent().build();

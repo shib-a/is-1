@@ -10,7 +10,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 @Provider
-@Priority(Priorities.USER)   // ← this is the magic line
+@Priority(Priorities.USER)
 public class CustomJacksonProvider extends ResteasyJackson2Provider {
 
     private static final ObjectMapper mapper = new ObjectMapper();

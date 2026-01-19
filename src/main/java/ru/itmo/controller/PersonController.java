@@ -40,8 +40,8 @@ public class PersonController {
     }
 
     @GET
-    @Path("/get")
-    public Person get(@QueryParam("id") @NotNull Long id) {
+    @Path("/{id}")
+    public Person get(@PathParam("id") @NotNull Long id) {
         Person person = personService.findPersonById(id);
         if (person == null) throw new NotFoundException("Person not found");
         return person;
@@ -54,16 +54,16 @@ public class PersonController {
     }
 
     @PUT
-    @Path("/update")
+    @Path("/{id}")
     public Person update(
-            @QueryParam("id") @NotNull Long id,
+            @PathParam("id") @NotNull Long id,
             @Valid Person person) {
         return personService.updatePerson(id, person);
     }
 
     @DELETE
-    @Path("/delete")
-    public Response delete(@QueryParam("id") @NotNull Long id) {
+    @Path("/{id}")
+    public Response delete(@PathParam("id") @NotNull Long id) {
         personService.deletePerson(id);
         return Response.noContent().build();
     }

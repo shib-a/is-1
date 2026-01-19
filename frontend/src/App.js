@@ -5,21 +5,69 @@ import {
     Table, TableHead, TableBody, TableRow, TableCell, TablePagination, TableSortLabel,
     TextField, InputAdornment, Button, Dialog, DialogTitle, DialogContent, DialogActions,
     MenuItem, Select, InputLabel, FormControl, CircularProgress, Box, Typography, Grid,
-    Chip, IconButton, FormControlLabel, Checkbox
+    Chip, IconButton, FormControlLabel, Checkbox, AppBar, Toolbar
 } from '@mui/material';
 import {
-    Search as SearchIcon, Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon
+    Search as SearchIcon, Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
+    Logout as LogoutIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import dayjs from 'dayjs';
 import { Toaster, toast } from 'react-hot-toast';
+import Login from './pages/Login';
+import Register from './pages/Register';
 
-const API_BASE = 'http://localhost:25203/is-1-1.0-SNAPSHOT/api';
+const API_BASE = 'http://localhost:8081/is-1-1.0-SNAPSHOT/api';
 const POLLING_INTERVAL = 5000;
 
+// Создаем axios instance с interceptor для добавления токена
+const axiosInstance = axios.create({
+    baseURL: API_BASE
+});
+
+axiosInstance.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
 function App() {
+    // Auth state
+    const [user, setUser] = useState(null);
+    const [authPage, setAuthPage] = useState('login'); // 'login' or 'register'
+
+    // Check for existing token on mount
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        const savedUser = localStorage.getItem('user');
+        if (token && savedUser) {
+            try {
+                setUser(JSON.parse(savedUser));
+            } catch (e) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+            }
+        }
+    }, []);
+
+    const handleLogin = (userData) => {
+        setUser(userData);
+    };
+
+    const handleRegister = (userData) => {
+        setUser(userData);
+    };
+
+    const handleLogout = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setUser(null);
+    };
+
     const [currentEntity, setCurrentEntity] = useState('workers');
     const [data, setData] = useState([]);
     const [workers, setWorkers] = useState([]);
@@ -30,6 +78,7 @@ function App() {
     const [persons, setPersons] = useState([]);
     const [endDateSearch, setEndDateSearch] = useState(null);
     const [activeFilters, setActiveFilters] = useState({});
+    const [showFilters, setShowFilters] = useState(false);
 
     const [indexWorkerId, setIndexWorkerId] = useState('');
     const [indexCoef, setIndexCoef] = useState('');
@@ -49,6 +98,8 @@ function App() {
     const [editingEntityType, setEditingEntityType] = useState('');
     const [editForm, setEditForm] = useState({});
     const [selectedDate, setSelectedDate] = useState(null);
+    const [endDateSearchValue, setEndDateSearchValue] = useState(null);
+    const [endDateCount, setEndDateCount] = useState(null);
 
     const openEditModal = (entity, type) => {
         setEditingEntity(entity);
@@ -121,6 +172,15 @@ function App() {
     const [searchRatingLess, setSearchRatingLess] = useState('');
     const [specialResults, setSpecialResults] = useState([]);
 
+    const [importModalOpen, setImportModalOpen] = useState(false);
+    const [importFile, setImportFile] = useState(null);
+    const [importing, setImporting] = useState(false);
+    const [importHistoryModalOpen, setImportHistoryModalOpen] = useState(false);
+    const [importHistory, setImportHistory] = useState([]);
+    const [importHistoryPage, setImportHistoryPage] = useState(0);
+    const [importHistoryRowsPerPage, setImportHistoryRowsPerPage] = useState(10);
+    const [importHistoryTotal, setImportHistoryTotal] = useState(0);
+
     const loadAllData = async () => {
         try {
             const endpoints = {
@@ -139,6 +199,26 @@ function App() {
             console.error(e);
         }
     };
+
+    const loadReferenceData = useCallback(async () => {
+        try {
+            const [orgsRes, addrsRes, locsRes, coordsRes, personsRes] = await Promise.all([
+                axios.get(`${API_BASE}/organizations/recent`),
+                axios.get(`${API_BASE}/addresses/recent`),
+                axios.get(`${API_BASE}/locations/recent`),
+                axios.get(`${API_BASE}/coordinates/recent`),
+                axios.get(`${API_BASE}/persons/recent`)
+            ]);
+
+            setOrganizations(orgsRes.data || []);
+            setAddresses(addrsRes.data || []);
+            setLocations(locsRes.data || []);
+            setCoordinatesList(coordsRes.data || []);
+            setPersons(personsRes.data || []);
+        } catch (e) {
+            console.error('Error loading reference data:', e);
+        }
+    }, []);
 
     const loadWorkers = useCallback(async () => {
 
@@ -173,6 +253,10 @@ function App() {
     }, [page, rowsPerPage, sort, dir, activeFilters]);
 
     useEffect(() => {
+        loadReferenceData();
+    }, [loadReferenceData]);
+
+    useEffect(() => {
         const loadCurrent = async () => {
             if (currentEntity === 'workers') {
                 await loadWorkers();
@@ -194,9 +278,19 @@ function App() {
                         dir,
                     });
 
-                    if (filter) {
-                        params.append('filter', filter);
+                    if (activeFilters && Object.keys(activeFilters).length > 0) {
+                        const filterStrings = Object.entries(activeFilters).map(([field, value]) => {
+                            if (value.trim()) {
+                                return `${field}:${value.trim()}`;
+                            }
+                            return null;
+                        }).filter(Boolean);
+
+                        if (filterStrings.length > 0) {
+                            params.append('filter', filterStrings.join(','));
+                        }
                     }
+
                     const res = await axios.get(`${API_BASE}${endpoint}?${params}`);
                     setData(res.data || []);
                     setTotal(res.data.length || 0);
@@ -204,6 +298,8 @@ function App() {
                     console.error(e);
                 }
             }
+
+            await loadReferenceData();
         };
 
         loadCurrent();
@@ -211,7 +307,7 @@ function App() {
         const interval = setInterval(loadCurrent, POLLING_INTERVAL);
 
         return () => clearInterval(interval);
-    }, [currentEntity, page, rowsPerPage, sort, dir, filter]);
+    }, [currentEntity, page, rowsPerPage, sort, dir, activeFilters, loadWorkers, loadReferenceData]);
 
     const openWorkerModal = (worker = null) => {
         setEditingWorker(worker);
@@ -244,9 +340,6 @@ function App() {
 
             const created = res.data;
 
-            // Эта проверка больше НЕ НУЖНА — если валидация сломалась → уже 400 → catch
-            // if (!created || created.exception || created.propertyViolations) throw created;
-
             setter(prev => [...prev, created]);
 
             if (targetField) {
@@ -256,12 +349,13 @@ function App() {
                 nestedSetter(prev => ({ ...prev, [nestedField]: created }));
             }
 
-            // Закрываем модалки
             if (type === 'organization') setOrgModalOpen(false);
             if (type === 'address') setAddressModalOpen(false);
             if (type === 'location') setLocationModalOpen(false);
             if (type === 'coordinates') setCoordsModalOpen(false);
             if (type === 'person') setPersonModalOpen(false);
+
+            await loadReferenceData();
 
         } catch (e) {
             console.error(e);
@@ -336,8 +430,78 @@ function App() {
         try {
             const res = await axios.get(url);
             setSpecialResults(res.data);
+            setEndDateCount(null);
         } catch (e) {
             console.error(e);
+        }
+    };
+
+    const handleImportFile = (event) => {
+        const file = event.target.files[0];
+        if (file && file.type === 'application/json') {
+            setImportFile(file);
+        } else {
+            toast.error('Пожалуйста, выберите JSON файл');
+            event.target.value = null;
+        }
+    };
+
+    const importWorkers = async () => {
+        if (!importFile) {
+            toast.error('Выберите файл для импорта');
+            return;
+        }
+
+        setImporting(true);
+        try {
+            const fileContent = await importFile.text();
+            const workers = JSON.parse(fileContent);
+
+            const response = await axiosInstance.post(
+                `/import/workers`,
+                workers,
+                {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            if (response.data.status === 'SUCCESS') {
+                toast.success(`Успешно импортировано ${response.data.addedCount} работников`);
+                setImportModalOpen(false);
+                setImportFile(null);
+                loadWorkers();
+                await loadReferenceData();
+            } else {
+                toast.error(`Ошибка импорта: ${response.data.errorMessage}`);
+            }
+        } catch (e) {
+            console.error(e);
+            const errorMsg = e.response?.data?.error || e.message || 'Неизвестная ошибка';
+            toast.error(`Ошибка импорта: ${errorMsg}`);
+        } finally {
+            setImporting(false);
+        }
+    };
+
+    const loadImportHistory = async (page = 0, pageSize = 10) => {
+        try {
+            const response = await axiosInstance.get(`/import/history`, {
+                params: {
+                    page: page,
+                    size: pageSize,
+                    sort: 'timestamp',
+                    dir: 'desc'
+                }
+            });
+            setImportHistory(response.data.data || []);
+            setImportHistoryTotal(response.data.total || 0);
+            setImportHistoryPage(page);
+            setImportHistoryModalOpen(true);
+        } catch (e) {
+            console.error(e);
+            toast.error('Ошибка загрузки истории импорта');
         }
     };
 
@@ -445,6 +609,26 @@ function App() {
     const currentColumns = columnConfigs[currentEntity] || columnConfigs.workers;
     const currentData = currentEntity === 'workers' ? workers : data;
 
+    // Если пользователь не авторизован, показываем страницу логина или регистрации
+    if (!user) {
+        return (
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <Toaster position="top-right" />
+                {authPage === 'login' ? (
+                    <Login
+                        onLogin={handleLogin}
+                        onSwitchToRegister={() => setAuthPage('register')}
+                    />
+                ) : (
+                    <Register
+                        onRegister={handleRegister}
+                        onSwitchToLogin={() => setAuthPage('login')}
+                    />
+                )}
+            </LocalizationProvider>
+        );
+    }
+
     return (
         <LocalizationProvider dateAdapter={AdapterDayjs}>
             <Toaster
@@ -467,14 +651,32 @@ function App() {
                     },
                 }}
             />
+            {/* Header с информацией о пользователе */}
+            <AppBar position="static" sx={{ mb: 2 }}>
+                <Toolbar>
+                    <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                        Управление работниками
+                    </Typography>
+                    <Typography sx={{ mr: 2 }}>
+                        {user.username}
+                    </Typography>
+                    <Button
+                        color="inherit"
+                        onClick={handleLogout}
+                        startIcon={<LogoutIcon />}
+                    >
+                        Выйти
+                    </Button>
+                </Toolbar>
+            </AppBar>
             <Box p={4}>
-                <Typography variant="h4" gutterBottom>Управление работниками</Typography>
 
                 <FormControl fullWidth sx={{ mb: 3 }}>
                     <InputLabel>Сущность</InputLabel>
                     <Select value={currentEntity} onChange={e => {
                         setCurrentEntity(e.target.value);
                         setPage(0);
+                        setActiveFilters({});
                     }}>
                         <MenuItem value="workers">Работники</MenuItem>
                         <MenuItem value="organizations">Организации</MenuItem>
@@ -488,6 +690,79 @@ function App() {
                 <Button variant="contained" startIcon={<AddIcon />} onClick={() => openWorkerModal()} sx={{ mb: 2 }}>
                     Добавить работника
                 </Button>
+
+                <Button
+                    variant="outlined"
+                    onClick={() => setImportModalOpen(true)}
+                    sx={{ mb: 2, ml: 2 }}
+                >
+                    Импорт из файла
+                </Button>
+
+                <Button
+                    variant="outlined"
+                    onClick={() => loadImportHistory()}
+                    sx={{ mb: 2, ml: 2 }}
+                >
+                    История импорта
+                </Button>
+
+                <Button
+                    variant="outlined"
+                    onClick={() => setShowFilters(!showFilters)}
+                    sx={{ mb: 2, ml: 2 }}
+                >
+                    {showFilters ? 'Скрыть фильтры' : 'Показать фильтры'}
+                    {Object.keys(activeFilters).length > 0 && ` (${Object.keys(activeFilters).length})`}
+                </Button>
+
+                {showFilters && (
+                    <Box sx={{ mb: 3, p: 2, border: '1px solid #ddd', borderRadius: 1, backgroundColor: '#f9f9f9' }}>
+                        <Typography variant="h6" gutterBottom>
+                            Фильтрация (точное совпадение)
+                        </Typography>
+                        <Grid container spacing={2}>
+                            {currentColumns.filter(col => col.id !== 'actions').map(col => (
+                                <Grid item xs={12} sm={6} md={4} lg={3} key={col.id}>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
+                                        label={`Фильтр: ${col.label}`}
+                                        value={activeFilters[col.id] || ''}
+                                        onChange={(e) => {
+                                            const newFilters = { ...activeFilters };
+                                            if (e.target.value) {
+                                                newFilters[col.id] = e.target.value;
+                                            } else {
+                                                delete newFilters[col.id];
+                                            }
+                                            setActiveFilters(newFilters);
+                                            setPage(0);
+                                        }}
+                                        placeholder={`Введите ${col.label.toLowerCase()}`}
+                                    />
+                                </Grid>
+                            ))}
+                        </Grid>
+                        {Object.keys(activeFilters).length > 0 && (
+                            <Box sx={{ mt: 2 }}>
+                                <Button
+                                    variant="outlined"
+                                    size="small"
+                                    onClick={() => {
+                                        setActiveFilters({});
+                                        setPage(0);
+                                    }}
+                                >
+                                    Очистить все фильтры
+                            </Button>
+                            <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
+                                Активных фильтров: {Object.keys(activeFilters).length}
+                            </Typography>
+                        </Box>
+                    )}
+                    </Box>
+                )}
 
 
                 {loading ? null : (
@@ -633,7 +908,10 @@ function App() {
                     </Grid>
                     {specialResults.length > 0 && (
                     <Box mt={4}>
-                        <Typography variant="h6">Результаты поиска по имени:</Typography>
+                        <Typography variant="h6">
+                            Результаты поиска: {specialResults.length} записей
+                            {endDateCount !== null && ` (совпадений по дате: ${endDateCount})`}
+                        </Typography>
                         <Grid container spacing={1}>
                             {specialResults.map(w => (
                                 <Grid item key={w.id}>
@@ -968,6 +1246,120 @@ function App() {
                 <DialogActions>
                     <Button onClick={() => setEditModalOpen(false)}>Отмена</Button>
                     <Button variant="contained" onClick={saveEditedEntity}>Сохранить</Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog open={importModalOpen} onClose={() => !importing && setImportModalOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Импорт работников из JSON</DialogTitle>
+                <DialogContent dividers>
+                    <Box sx={{ my: 2 }}>
+                        <Typography variant="body2" gutterBottom>
+                            Выберите JSON файл с массивом работников для импорта.
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                            Формат файла должен содержать массив объектов Worker с заполненными полями
+                            и вложенными объектами (coordinates, organization, person).
+                        </Typography>
+                        <Button
+                            variant="outlined"
+                            component="label"
+                            fullWidth
+                            sx={{ mt: 2 }}
+                            disabled={importing}
+                        >
+                            {importFile ? importFile.name : 'Выбрать файл'}
+                            <input
+                                type="file"
+                                accept=".json"
+                                hidden
+                                onChange={handleImportFile}
+                            />
+                        </Button>
+                        {importing && (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                                <CircularProgress />
+                            </Box>
+                        )}
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setImportModalOpen(false)} disabled={importing}>
+                        Отмена
+                    </Button>
+                    <Button
+                        variant="contained"
+                        onClick={importWorkers}
+                        disabled={!importFile || importing}
+                    >
+                        {importing ? 'Импорт...' : 'Импортировать'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog open={importHistoryModalOpen} onClose={() => setImportHistoryModalOpen(false)} maxWidth="md" fullWidth>
+                <DialogTitle>История импорта</DialogTitle>
+                <DialogContent dividers>
+                    {importHistory.length === 0 ? (
+                        <Typography>История импорта пуста</Typography>
+                    ) : (
+                        <>
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>ID</TableCell>
+                                        <TableCell>Дата и время</TableCell>
+                                        <TableCell>Пользователь</TableCell>
+                                        <TableCell>Статус</TableCell>
+                                        <TableCell>Добавлено</TableCell>
+                                        <TableCell>Ошибка</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {importHistory.map((record) => (
+                                        <TableRow key={record.id}>
+                                            <TableCell>{record.id}</TableCell>
+                                            <TableCell>
+                                                {new Date(record.timestamp).toLocaleString('ru-RU')}
+                                            </TableCell>
+                                            <TableCell>{record.username || '-'}</TableCell>
+                                            <TableCell>
+                                                <Chip
+                                                    label={record.status}
+                                                    color={record.status === 'SUCCESS' ? 'success' : 'error'}
+                                                    size="small"
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                {record.status === 'SUCCESS' ? record.addedCount : '-'}
+                                            </TableCell>
+                                            <TableCell sx={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {record.errorMessage || '-'}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                            <TablePagination
+                                component="div"
+                                count={importHistoryTotal}
+                                page={importHistoryPage}
+                                onPageChange={(e, newPage) => {
+                                    loadImportHistory(newPage, importHistoryRowsPerPage);
+                                }}
+                                rowsPerPage={importHistoryRowsPerPage}
+                                onRowsPerPageChange={(e) => {
+                                    const newPageSize = parseInt(e.target.value, 10);
+                                    setImportHistoryRowsPerPage(newPageSize);
+                                    loadImportHistory(0, newPageSize);
+                                }}
+                                labelRowsPerPage="Записей на странице:"
+                                labelDisplayedRows={({ from, to, count }) => `${from}-${to} из ${count}`}
+                            />
+                        </>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setImportHistoryModalOpen(false)}>Закрыть</Button>
                 </DialogActions>
             </Dialog>
             </Box>

@@ -1,12 +1,15 @@
 package ru.itmo.service;
 
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import ru.itmo.model.Location;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.NoResultException;
 import lombok.Data;
 import ru.itmo.repository.LocationRepository;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
@@ -16,29 +19,107 @@ public class LocationService {
     @Inject
     private LocationRepository locationRepository;
 
+    @Inject
+    private EntityManager entityManager;
+
+    private void beginSerializableTransaction() {
+        entityManager.getTransaction().begin();
+        try {
+            entityManager.unwrap(Connection.class).setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
+        } catch (SQLException ignored) {}
+    }
+
+    private void beginRepeatableReadTransaction() {
+        entityManager.getTransaction().begin();
+        try {
+            entityManager.unwrap(Connection.class).setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
+        } catch (SQLException ignored) {}
+    }
+
     public List<Location> findAllLocationsPagedFiltered(int page, int pageSize, String sortField, String sortDirection, Map<String, String> filters) {
-        return locationRepository.findAllPagedFiltered(page, pageSize, sortField, sortDirection, filters);
+        beginRepeatableReadTransaction();
+        try {
+            List<Location> result = locationRepository.findAllPagedFiltered(page, pageSize, sortField, sortDirection, filters);
+            entityManager.getTransaction().commit();
+            return result;
+        } catch (Exception e) {
+            if (entityManager.getTransaction().isActive()) {
+                entityManager.getTransaction().rollback();
+            }
+            throw e;
+        }
     }
 
     public Location findLocationById(Long id) {
-        return locationRepository.findById(id);
+        beginRepeatableReadTransaction();
+        try {
+            Location result = locationRepository.findById(id);
+            entityManager.getTransaction().commit();
+            return result;
+        } catch (Exception e) {
+            if (entityManager.getTransaction().isActive()) {
+                entityManager.getTransaction().rollback();
+            }
+            throw e;
+        }
     }
 
     public Location createLocation(Location location) {
-        return locationRepository.create(location);
+        beginSerializableTransaction();
+        try {
+            Location result = locationRepository.create(location);
+            entityManager.getTransaction().commit();
+            return result;
+        } catch (Exception e) {
+            if (entityManager.getTransaction().isActive()) {
+                entityManager.getTransaction().rollback();
+            }
+            throw e;
+        }
     }
 
     public Location updateLocation(Long id, Location location) {
-        return locationRepository.update(id, location);
+        beginSerializableTransaction();
+        try {
+            Location result = locationRepository.update(id, location);
+            entityManager.getTransaction().commit();
+            return result;
+        } catch (Exception e) {
+            if (entityManager.getTransaction().isActive()) {
+                entityManager.getTransaction().rollback();
+            }
+            throw e;
+        }
     }
 
     public void deleteLocation(Long id) {
-        Location location = locationRepository.findById(id);
-        if (location == null) throw new NoResultException("Location not found");
-        locationRepository.delete(location);
+        beginSerializableTransaction();
+        try {
+            Location location = locationRepository.findById(id);
+            if (location == null) throw new NoResultException("Location not found");
+
+            locationRepository.nullifyReferences(id);
+            locationRepository.delete(location);
+            entityManager.getTransaction().commit();
+        } catch (Exception e) {
+            if (entityManager.getTransaction().isActive()) {
+                entityManager.getTransaction().rollback();
+            }
+            throw e;
+        }
     }
 
     public List<Location> findAllLocationsTruncated() {
-        return locationRepository.findAllTruncated();
+        beginRepeatableReadTransaction();
+        try {
+            List<Location> result = locationRepository.findAllTruncated();
+            entityManager.getTransaction().commit();
+            return result;
+        } catch (Exception e) {
+            if (entityManager.getTransaction().isActive()) {
+                entityManager.getTransaction().rollback();
+            }
+            throw e;
+        }
     }
 }

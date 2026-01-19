@@ -24,28 +24,43 @@ public class LocationRepository {
         if (filters != null && !filters.isEmpty()) {
             for (Map.Entry<String, String> entry : filters.entrySet()) {
                 String field = entry.getKey();
-                String pattern = "%" + entry.getValue().toLowerCase() + "%";
+                String value = entry.getValue();
 
-                Expression<String> fieldExpr;
                 try {
-                    fieldExpr = root.get(field).as(String.class);
-                    Predicate likePredicate = cb.like(cb.lower(fieldExpr), pattern);
-                    predicates.add(likePredicate);
+                    Expression<?> fieldExpr = root.get(field);
+                    Class<?> fieldType = fieldExpr.getJavaType();
+
+                    if (fieldType == String.class) {
+                        Predicate equalPredicate = cb.equal(cb.lower(fieldExpr.as(String.class)), value.toLowerCase());
+                        predicates.add(equalPredicate);
+                    } else if (fieldType.isEnum()) {
+                        try {
+                            Enum enumValue = Enum.valueOf((Class<Enum>) fieldType, value.toUpperCase());
+                            Predicate equalPredicate = cb.equal(fieldExpr, enumValue);
+                            predicates.add(equalPredicate);
+                        } catch (IllegalArgumentException e) {
+                        }
+                    } else {
+                        Predicate equalPredicate = cb.equal(fieldExpr.as(String.class), value);
+                        predicates.add(equalPredicate);
+                    }
                 } catch (IllegalArgumentException e) {
-                    fieldExpr = cb.function("CAST", String.class, root.get(field), cb.literal("TEXT"));
-                    Predicate likePredicate = cb.like(cb.lower(fieldExpr), pattern);
-                    predicates.add(likePredicate);
                 }
             }
         }
 
         if (!predicates.isEmpty()) {
-            cq.where(cb.or(predicates.toArray(new Predicate[0])));
+            cq.where(cb.and(predicates.toArray(new Predicate[0])));
         }
 
         if (sortField != null && !sortField.isEmpty() && sortDirection != null && !sortDirection.isEmpty()) {
-            Order order = sortDirection.equals("asc") ? cb.asc(root.get(sortField)) : cb.desc(root.get(sortField));
-            cq.orderBy(order);
+            try {
+                Order order = sortDirection.equals("asc") ? cb.asc(root.get(sortField)) : cb.desc(root.get(sortField));
+                cq.orderBy(order);
+            } catch (IllegalArgumentException e) {
+                Order order = sortDirection.equals("asc") ? cb.asc(root.get("id")) : cb.desc(root.get("id"));
+                cq.orderBy(order);
+            }
         }
 
         TypedQuery<Location> query = entityManager.createQuery(cq);
@@ -59,11 +74,17 @@ public class LocationRepository {
         return entityManager.find(Location.class, id);
     }
 
+    public Location findByIdOrNull(Long id) {
+        return entityManager.find(Location.class, id);
+    }
+
+    public void persistInTransaction(Location location) {
+        entityManager.persist(location);
+    }
+
     public Location create(Location location) {
-        entityManager.getTransaction().begin();
         entityManager.persist(location);
         entityManager.flush();
-        entityManager.getTransaction().commit();
         return location;
     }
 
@@ -71,19 +92,25 @@ public class LocationRepository {
         Location existing = entityManager.find(Location.class, id);
         if (existing == null) throw new NoResultException("Location not found");
 
-        entityManager.getTransaction().begin();
         location.setId(id);
         var res = entityManager.merge(location);
         entityManager.flush();
-        entityManager.getTransaction().commit();
         return res;
     }
 
     public void delete(Location location) {
-        entityManager.getTransaction().begin();
         entityManager.remove(location);
         entityManager.flush();
-        entityManager.getTransaction().commit();
+    }
+
+    public void nullifyReferences(Long locationId) {
+        entityManager.createQuery("UPDATE Person p SET p.location = NULL WHERE p.location.id = :locId")
+                .setParameter("locId", locationId)
+                .executeUpdate();
+        entityManager.createQuery("UPDATE Address a SET a.town = NULL WHERE a.town.id = :locId")
+                .setParameter("locId", locationId)
+                .executeUpdate();
+        entityManager.flush();
     }
 
     public List<Location> findAllTruncated() {

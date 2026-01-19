@@ -21,7 +21,7 @@ public class EntityManagerProducer {
     }
 
     @Produces
-    @RequestScoped   // ← correct scope (or @Dependent if you prefer)
+    @RequestScoped
     public EntityManager createEntityManager() {
         return emf.createEntityManager();
     }

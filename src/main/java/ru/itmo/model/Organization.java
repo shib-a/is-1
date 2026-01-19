@@ -18,7 +18,6 @@ public class Organization {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-
     @Positive
     @Column(nullable = false)
     private double annualTurnover;
