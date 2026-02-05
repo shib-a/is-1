@@ -1,0 +1,40 @@
+[{
+  "name": "Рандом Рандомович 737365",
+  "salary": 50000,
+  "rating": 4.5,
+  "startDate": "2024-01-15",
+  "endDate": null,
+  "position": "LABORER",
+  "coordinates": {
+    "x": 127,
+    "y": 122
+  },
+  "organization": {
+    "annualTurnover": 1000000,
+    "employeesCount": 50,
+    "fullName": "ООО Рандом 737365",
+    "rating": 4.2,
+    "officialAddress": {
+      "street": "Рандомова 737365",
+      "town": {
+        "x": 127,
+        "y": 122,
+        "z": -320,
+        "name": "Рандомино 737365"
+      }
+    }
+  },
+  "person": {
+    "eyeColor": "BLACK",
+    "hairColor": "BLACK",
+    "height": 180,
+    "passportID": "-89875845975",
+    "nationality": "RUSSIA",
+    "location": {
+      "x": 5,
+      "y": 10,
+      "z": 15,
+      "name": "Офис 737365"
+    }
+  }
+}]

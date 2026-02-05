@@ -30,7 +30,7 @@ public class Person {
     @Column(nullable = false)
     private long height;
 
-    @Column(unique = true)
+    @Column
     private String passportID;
 
     @Enumerated(EnumType.STRING)

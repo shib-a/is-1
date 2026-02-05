@@ -1,0 +1,40 @@
+[{
+  "name": "Петр Петров",
+  "salary": 60000,
+  "rating": 4.8,
+  "startDate": "2024-02-01",
+  "endDate": null,
+  "position": "HEAD_OF_DEPARTMENT",
+  "coordinates": {
+    "x": 150.7,
+    "y": 250.9
+  },
+  "organization": {
+    "annualTurnover": 2000000,
+    "employeesCount": 100,
+    "fullName": "ООО Новая Компания",
+    "rating": 4.5,
+    "officialAddress": {
+      "street": "Пушкина 5",
+      "town": {
+        "x": 15,
+        "y": 25,
+        "z": 35,
+        "name": "Санкт-Петербург"
+      }
+    }
+  },
+  "person": {
+    "eyeColor": "BLACK",
+    "hairColor": "BLACK",
+    "height": 180,
+    "passportID": "23452376345",
+    "nationality": "RUSSIA",
+    "location": {
+      "x": 5,
+      "y": 10,
+      "z": 15,
+      "name": "Офис"
+    }
+  }
+}]

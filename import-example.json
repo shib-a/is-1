@@ -1,0 +1,71 @@
+[
+  {
+    "name": "Иван Иванов",
+    "salary": 50000,
+    "rating": 4.5,
+    "startDate": "2024-01-15",
+    "endDate": null,
+    "position": "LABORER",
+    "coordinates": {
+      "x": 100.5,
+      "y": 200.3
+    },
+    "organization": {
+      "annualTurnover": 1000000,
+      "employeesCount": 50,
+      "fullName": "ООО Рога и Копыта",
+      "rating": 4.2,
+      "officialAddress": {
+        "street": "Ленина 1",
+        "town": {
+          "x": 10,
+          "y": 20,
+          "z": 30,
+          "name": "Москва"
+        }
+      }
+    },
+    "person": {
+      "eyeColor": "BLACK",
+      "hairColor": "BLACK",
+      "height": 180,
+      "passportID": "676767676767",
+      "nationality": "RUSSIA",
+      "location": {
+        "x": 5,
+        "y": 10,
+        "z": 15,
+        "name": "Офис"
+      }
+    }
+  },
+  {
+    "name": "Петр Петров",
+    "salary": 60000,
+    "rating": 4.8,
+    "startDate": "2024-02-01",
+    "endDate": null,
+    "position": "HEAD_OF_DEPARTMENT",
+    "coordinates": {
+      "x": 150.7,
+      "y": 250.9
+    },
+    "organization": {
+      "annualTurnover": 2000000,
+      "employeesCount": 100,
+      "fullName": "ООО Новая Компания",
+      "rating": 4.5,
+      "officialAddress": {
+        "street": "Пушкина 5",
+        "town": {
+          "x": 15,
+          "y": 25,
+          "z": 35,
+          "name": "Санкт-Петербург"
+        }
+      }
+    },
+    "person": null
+  }
+]
+
