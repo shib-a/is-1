@@ -12,5 +12,5 @@ public class ImportHistoryDTO {
     private ImportStatus status;
     private Integer addedCount;
     private String errorMessage;
-    private String username;
+    private String fileName;
 }

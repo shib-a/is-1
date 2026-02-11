@@ -11,6 +11,7 @@ import java.util.List;
 @Entity
 @Table(name = "persons")
 @Data
+@Cacheable
 public class Person {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

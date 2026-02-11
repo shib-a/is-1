@@ -132,4 +132,29 @@ public class PersonRepository {
         query.setParameter("excludeId", excludeId);
         return query.getSingleResult() > 0;
     }
+
+    public boolean existsByPassportIDWithLock(String passportID) {
+        if (passportID == null) return false;
+
+        TypedQuery<Person> query = entityManager.createQuery(
+                "SELECT p FROM Person p WHERE p.passportID = :passportID", Person.class);
+        query.setParameter("passportID", passportID);
+        query.setLockMode(LockModeType.PESSIMISTIC_WRITE);
+
+        List<Person> results = query.getResultList();
+        return !results.isEmpty();
+    }
+
+    public boolean existsByPassportIDExcludingIdWithLock(String passportID, Long excludeId) {
+        if (passportID == null) return false;
+
+        TypedQuery<Person> query = entityManager.createQuery(
+                "SELECT p FROM Person p WHERE p.passportID = :passportID AND p.id <> :excludeId", Person.class);
+        query.setParameter("passportID", passportID);
+        query.setParameter("excludeId", excludeId);
+        query.setLockMode(LockModeType.PESSIMISTIC_WRITE);
+
+        List<Person> results = query.getResultList();
+        return !results.isEmpty();
+    }
 }

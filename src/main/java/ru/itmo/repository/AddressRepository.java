@@ -103,12 +103,6 @@ public class AddressRepository {
         entityManager.flush();
     }
 
-    public void nullifyOrganizationReferences(Long addressId) {
-        entityManager.createQuery("UPDATE Organization o SET o.officialAddress = NULL WHERE o.officialAddress.id = :addressId")
-                .setParameter("addressId", addressId)
-                .executeUpdate();
-        entityManager.flush();
-    }
 
     public List<Address> findAllTruncated() {
         TypedQuery<Address> query = entityManager.createQuery("SELECT a FROM Address a ORDER BY a.id DESC", Address.class);

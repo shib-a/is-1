@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 @Data
 @Getter
 @Setter
+@Cacheable
 public class ImportHistory {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,6 +30,9 @@ public class ImportHistory {
 
     @Column(length = 2000)
     private String errorMessage;
+
+    @Column(length = 500)
+    private String fileName;
 
     @PrePersist
     private void onCreate() {

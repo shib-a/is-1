@@ -14,6 +14,7 @@ import java.util.Date;
 @Table(name = "workers")
 @Data
 @Getter @Setter
+@Cacheable
 public class Worker {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

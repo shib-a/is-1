@@ -83,6 +83,16 @@ public class OrganizationService {
         try {
             Organization organization = organizationRepository.findById(id);
             if (organization == null) throw new NoResultException("Organization not found");
+            long workerCount = entityManager.createQuery(
+                "SELECT COUNT(w) FROM Worker w WHERE w.organization.id = :orgId", Long.class)
+                .setParameter("orgId", id)
+                .getSingleResult();
+
+            if (workerCount > 0) {
+                throw new IllegalStateException(
+                    "Cannot delete organization: " + workerCount + " worker(s) are assigned to this organization. Please delete or reassign them first.");
+            }
+
             organizationRepository.delete(organization);
             entityManager.getTransaction().commit();
         } catch (Exception e) {

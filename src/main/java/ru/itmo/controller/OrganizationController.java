@@ -1,5 +1,6 @@
 package ru.itmo.controller;
 
+import jakarta.persistence.NoResultException;
 import ru.itmo.model.Organization;
 import ru.itmo.model.Worker;
 import ru.itmo.service.OrganizationService;
@@ -65,8 +66,30 @@ public class OrganizationController {
     @Path("/{id}")
     public Response delete(
             @PathParam("id") @NotNull Long id,
-            @QueryParam("newOrgId") @NotNull Long newOrgId) {
-        organizationService.deleteWithReassign(id, newOrgId);
-        return Response.noContent().build();
+            @QueryParam("newOrgId") Long newOrgId) {
+        try {
+            if (newOrgId != null) {
+                organizationService.deleteWithReassign(id, newOrgId);
+            } else {
+                organizationService.deleteOrganization(id);
+            }
+            return Response.noContent().build();
+        } catch (IllegalStateException e) {
+            return Response.status(Response.Status.CONFLICT)
+                    .entity("{\"error\": \"" + e.getMessage() + "\"}")
+                    .build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("{\"error\": \"" + e.getMessage() + "\"}")
+                    .build();
+        } catch (NoResultException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("{\"error\": \"Organization not found\"}")
+                    .build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("{\"error\": \"" + e.getMessage() + "\"}")
+                    .build();
+        }
     }
 }

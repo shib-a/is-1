@@ -98,7 +98,16 @@ public class AddressService {
             Address address = addressRepository.findById(id);
             if (address == null) throw new NoResultException("Address not found");
 
-            addressRepository.nullifyOrganizationReferences(id);
+            long orgCount = entityManager.createQuery(
+                "SELECT COUNT(o) FROM Organization o WHERE o.officialAddress.id = :addressId", Long.class)
+                .setParameter("addressId", id)
+                .getSingleResult();
+
+            if (orgCount > 0) {
+                throw new IllegalStateException(
+                    "Cannot delete address: " + orgCount + " organization(s) are using this address. Please delete or reassign them first.");
+            }
+
             addressRepository.delete(address);
             entityManager.getTransaction().commit();
         } catch (Exception e) {

@@ -8,6 +8,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import ru.itmo.DTO.ImportHistoryDTO;
 import ru.itmo.DTO.WorkerDTO;
+import ru.itmo.config.MinioService;
 import ru.itmo.service.ImportService;
 
 import java.io.InputStream;
@@ -30,17 +31,19 @@ public class ImportController {
     public Response importWorkers(InputStream inputStream) {
 
         try {
+            byte[] fileContent = inputStream.readAllBytes();
+
             ObjectMapper objectMapper = new ObjectMapper();
             objectMapper.registerModule(new JavaTimeModule());
 
-            WorkerDTO[] workerArray = objectMapper.readValue(inputStream, WorkerDTO[].class);
+            WorkerDTO[] workerArray = objectMapper.readValue(fileContent, WorkerDTO[].class);
             List<WorkerDTO> workers = Arrays.asList(workerArray);
 
             if (workers.isEmpty()) {
                 return Response.status(Response.Status.BAD_REQUEST).entity("{\"error\": \"No workers in file\"}").build();
             }
 
-            ImportHistoryDTO history = importService.importWorkers(workers);
+            ImportHistoryDTO history = importService.importWorkers(workers, fileContent);
 
             return Response.ok(history).build();
 
@@ -70,6 +73,22 @@ public class ImportController {
             return Response.ok(response).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("{\"error\": \"Failed to retrieve history: " + e.getMessage() + "\"}").build();
+        }
+    }
+
+    @GET
+    @Path("/download/{fileName}")
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    public Response downloadFile(@PathParam("fileName") String fileName) {
+        try {
+            byte[] fileContent = importService.downloadImportFile(fileName);
+            return Response.ok(fileContent)
+                    .header("Content-Disposition", "attachment; filename=\"" + fileName + "\"")
+                    .build();
+        } catch (MinioService.MinioException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("{\"error\": \"File not found: " + e.getMessage() + "\"}")
+                    .build();
         }
     }
 }

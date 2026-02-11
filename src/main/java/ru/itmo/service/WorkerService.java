@@ -5,6 +5,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.ws.rs.NotFoundException;
 import ru.itmo.DTO.WorkerDTO;
 import ru.itmo.common.WorkerMapper;
+import ru.itmo.config.CacheLogging;
 import ru.itmo.model.Organization;
 import ru.itmo.model.Person;
 import ru.itmo.model.Worker;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 
 @ApplicationScoped
 @Data
+@CacheLogging
 public class WorkerService {
 
     @Inject

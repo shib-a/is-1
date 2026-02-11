@@ -103,15 +103,6 @@ public class LocationRepository {
         entityManager.flush();
     }
 
-    public void nullifyReferences(Long locationId) {
-        entityManager.createQuery("UPDATE Person p SET p.location = NULL WHERE p.location.id = :locId")
-                .setParameter("locId", locationId)
-                .executeUpdate();
-        entityManager.createQuery("UPDATE Address a SET a.town = NULL WHERE a.town.id = :locId")
-                .setParameter("locId", locationId)
-                .executeUpdate();
-        entityManager.flush();
-    }
 
     public List<Location> findAllTruncated() {
         TypedQuery<Location> query = entityManager.createQuery("SELECT l FROM Location l ORDER BY l.id DESC", Location.class);

@@ -13,6 +13,7 @@ import java.util.List;
 @Entity
 @Table(name = "organizations")
 @Data
+@Cacheable
 public class Organization {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

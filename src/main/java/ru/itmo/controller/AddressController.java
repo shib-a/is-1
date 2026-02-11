@@ -1,5 +1,6 @@
 package ru.itmo.controller;
 
+import jakarta.persistence.NoResultException;
 import ru.itmo.model.Address;
 import ru.itmo.model.Organization;
 import ru.itmo.model.Worker;
@@ -75,9 +76,18 @@ public class AddressController {
         try {
             addressService.deleteAddress(id);
             return Response.noContent().build();
-        } catch (Exception e) {
+        } catch (IllegalStateException e) {
+            return Response.status(Response.Status.CONFLICT)
+                    .entity("{\"error\": \"" + e.getMessage() + "\"}")
+                    .build();
+        } catch (NoResultException e) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity(e.getMessage()).build();
+                    .entity("{\"error\": \"Address not found\"}")
+                    .build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("{\"error\": \"" + e.getMessage() + "\"}")
+                    .build();
         }
     }
 }

@@ -40,9 +40,12 @@ public class PersonService {
     public Person createPerson(Person person) {
         beginSerializableTransaction();
         try {
-            if (person.getPassportID() != null && personRepository.existsByPassportID(person.getPassportID())) {
-                throw new IllegalArgumentException("Person with passportID '" + person.getPassportID() + "' already exists");
+            if (person.getPassportID() != null &&
+                personRepository.existsByPassportIDWithLock(person.getPassportID())) {
+                throw new IllegalArgumentException(
+                    "Person with passportID '" + person.getPassportID() + "' already exists");
             }
+
             Person result = personRepository.create(person);
             entityManager.getTransaction().commit();
             return result;
@@ -71,9 +74,12 @@ public class PersonService {
     public Person updatePerson(Long id, Person person) {
         beginSerializableTransaction();
         try {
-            if (person.getPassportID() != null && personRepository.existsByPassportIDExcludingId(person.getPassportID(), id)) {
-                throw new IllegalArgumentException("Person with passportID '" + person.getPassportID() + "' already exists");
+            if (person.getPassportID() != null &&
+                personRepository.existsByPassportIDExcludingIdWithLock(person.getPassportID(), id)) {
+                throw new IllegalArgumentException(
+                    "Person with passportID '" + person.getPassportID() + "' already exists");
             }
+
             Person result = personRepository.update(id, person);
             entityManager.getTransaction().commit();
             return result;

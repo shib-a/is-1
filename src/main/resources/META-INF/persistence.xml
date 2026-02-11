@@ -3,76 +3,52 @@
              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
              xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd"
              version="3.0">
-<!--  <persistence-unit name="workerManagement" transaction-type="RESOURCE_LOCAL">-->
-<!--    <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>-->
-
-<!--    <class>ru.itmo.model.Worker</class>-->
-<!--    <class>ru.itmo.model.Organization</class>-->
-<!--    <class>ru.itmo.model.Person</class>-->
-<!--    <class>ru.itmo.model.Coordinates</class>-->
-<!--    <class>ru.itmo.model.Address</class>-->
-<!--    <class>ru.itmo.model.Location</class>-->
-<!--    <properties>-->
-<!--      <property name="eclipselink.jdbc.schema" value="is"/>-->
-
-<!--      <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>-->
-<!--      <property name="jakarta.persistence.jdbc.user" value="postgres"/>-->
-<!--      <property name="jakarta.persistence.jdbc.password" value="NUTd/6706"/>-->
-<!--      <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://localhost:5432/postgres?currentSchema=is"/>-->
-
-<!--&lt;!&ndash;      <property name="jakarta.persistence.schema-generation.database.action" value="drop-and-create"/>&ndash;&gt;-->
-<!--      <property name="jakarta.persistence.schema-generation.create-source" value="metadata"/>-->
-<!--      <property name="eclipselink.weaving" value="false"/>-->
-<!--      <property name="eclipselink.logging.level.sql" value="FINE"/>-->
-<!--      <property name="eclipselink.logging.parameters" value="true"/>-->
-<!--      <property name="eclipselink.logging.connection" value="true"/>-->
-<!--      <property name="eclipselink.ddl-generation" value="drop-and-create-tables"/>-->
-<!--      <property name="eclipselink.ddl-generation.output-mode" value="database"/>-->
-<!--      <property name="eclipselink.media.type" value="application/json"/>-->
-<!--      <property name="eclipselink.target-database" value="org.eclipse.persistence.platform.database.PostgreSQLPlatform"/>-->
-<!--    </properties>-->
-
-<!--  </persistence-unit>-->
-  <persistence-unit name="workerManagement" transaction-type="RESOURCE_LOCAL">  <!-- IMPORTANT: change to RESOURCE_LOCAL for dev -->
+  <persistence-unit name="workerManagement" transaction-type="RESOURCE_LOCAL">
     <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
 
-        <class>ru.itmo.model.Worker</class>
-        <class>ru.itmo.model.Organization</class>
-        <class>ru.itmo.model.Person</class>
-        <class>ru.itmo.model.Coordinates</class>
-        <class>ru.itmo.model.Address</class>
-        <class>ru.itmo.model.Location</class>
+    <class>ru.itmo.model.Worker</class>
+    <class>ru.itmo.model.Organization</class>
+    <class>ru.itmo.model.Person</class>
+    <class>ru.itmo.model.Coordinates</class>
+    <class>ru.itmo.model.Address</class>
+    <class>ru.itmo.model.Location</class>
+    <class>ru.itmo.model.ImportHistory</class>
 
-    <exclude-unlisted-classes>false</exclude-unlisted-classes>
+    <shared-cache-mode>ENABLE_SELECTIVE</shared-cache-mode>
 
     <properties>
-
-      <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
-      <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://pg:5432/studs"/>
-      <property name="jakarta.persistence.jdbc.user" value="s409091"/>
-      <property name="jakarta.persistence.jdbc.password" value="0QdjvOPZ6gsasXOL"/>
-
-
       <property name="eclipselink.jdbc.schema" value="is"/>
 
+      <property name="eclipselink.connection-pool.default.initial" value="5"/>
+      <property name="eclipselink.connection-pool.default.min" value="5"/>
+      <property name="eclipselink.connection-pool.default.max" value="20"/>
+      <property name="eclipselink.connection-pool.default.wait" value="30000"/>
+      <property name="eclipselink.connection-pool.default.url" value="jdbc:postgresql://localhost:5432/postgres?currentSchema=is"/>
+      <property name="eclipselink.connection-pool.default.user" value="postgres"/>
+      <property name="eclipselink.connection-pool.default.password" value="NUTd/6706"/>
+      <property name="eclipselink.connection-pool.default.driver" value="org.postgresql.Driver"/>
 
+      <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
+      <property name="jakarta.persistence.jdbc.user" value="postgres"/>
+      <property name="jakarta.persistence.jdbc.password" value="NUTd/6706"/>
+      <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://localhost:5432/postgres?currentSchema=is"/>
+
+      <property name="jakarta.persistence.schema-generation.create-source" value="metadata"/>
+      <property name="eclipselink.weaving" value="false"/>
+      <property name="eclipselink.logging.level.sql" value="FINE"/>
+      <property name="eclipselink.logging.parameters" value="true"/>
+      <property name="eclipselink.logging.connection" value="true"/>
       <property name="eclipselink.ddl-generation" value="drop-and-create-tables"/>
       <property name="eclipselink.ddl-generation.output-mode" value="database"/>
-
-
-      <property name="eclipselink.deploy-on-startup" value="true"/>
-
-
-      <property name="eclipselink.logging.level" value="FINEST"/>
-      <property name="eclipselink.logging.parameters" value="true"/>
-      <property name="eclipselink.logging.level.sql" value="FINE"/>
-      <property name="eclipselink.logging.level.ddl" value="FINE"/>
-
-
-      <property name="eclipselink.weaving" value="false"/>
-
-
       <property name="eclipselink.media.type" value="application/json"/>
+      <property name="eclipselink.target-database" value="org.eclipse.persistence.platform.database.PostgreSQLPlatform"/>
+
+      <property name="eclipselink.cache.shared.default" value="true"/>
+      <property name="eclipselink.cache.size.default" value="1000"/>
+      <property name="eclipselink.cache.type.default" value="SoftWeak"/>
+      <property name="eclipselink.query-results-cache" value="true"/>
+      <property name="eclipselink.query-results-cache.size" value="500"/>
     </properties>
+
   </persistence-unit>
 </persistence>

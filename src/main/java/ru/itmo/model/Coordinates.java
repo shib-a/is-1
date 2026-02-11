@@ -11,6 +11,7 @@ import java.util.List;
 @Data
 @Entity
 @Table(name="coordinates")
+@Cacheable
 public class Coordinates {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

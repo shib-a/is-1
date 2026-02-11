@@ -98,7 +98,26 @@ public class LocationService {
             Location location = locationRepository.findById(id);
             if (location == null) throw new NoResultException("Location not found");
 
-            locationRepository.nullifyReferences(id);
+            long addressCount = entityManager.createQuery(
+                "SELECT COUNT(a) FROM Address a WHERE a.town.id = :locId", Long.class)
+                .setParameter("locId", id)
+                .getSingleResult();
+
+            if (addressCount > 0) {
+                throw new IllegalStateException(
+                    "Cannot delete location: " + addressCount + " address(es) are using this location. Please delete or reassign them first.");
+            }
+
+            long personCount = entityManager.createQuery(
+                "SELECT COUNT(p) FROM Person p WHERE p.location.id = :locId", Long.class)
+                .setParameter("locId", id)
+                .getSingleResult();
+
+            if (personCount > 0) {
+                throw new IllegalStateException(
+                    "Cannot delete location: " + personCount + " person(s) are using this location. Please delete or reassign them first.");
+            }
+
             locationRepository.delete(location);
             entityManager.getTransaction().commit();
         } catch (Exception e) {

@@ -9,64 +9,18 @@ import {
 } from '@mui/material';
 import {
     Search as SearchIcon, Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
-    Logout as LogoutIcon
+    Download as DownloadIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import dayjs from 'dayjs';
 import { Toaster, toast } from 'react-hot-toast';
-import Login from './pages/Login';
-import Register from './pages/Register';
 
 const API_BASE = 'http://localhost:8081/is-1-1.0-SNAPSHOT/api';
 const POLLING_INTERVAL = 5000;
 
-// Создаем axios instance с interceptor для добавления токена
-const axiosInstance = axios.create({
-    baseURL: API_BASE
-});
-
-axiosInstance.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-});
-
 function App() {
-    // Auth state
-    const [user, setUser] = useState(null);
-    const [authPage, setAuthPage] = useState('login'); // 'login' or 'register'
-
-    // Check for existing token on mount
-    useEffect(() => {
-        const token = localStorage.getItem('token');
-        const savedUser = localStorage.getItem('user');
-        if (token && savedUser) {
-            try {
-                setUser(JSON.parse(savedUser));
-            } catch (e) {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-            }
-        }
-    }, []);
-
-    const handleLogin = (userData) => {
-        setUser(userData);
-    };
-
-    const handleRegister = (userData) => {
-        setUser(userData);
-    };
-
-    const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        setUser(null);
-    };
 
     const [currentEntity, setCurrentEntity] = useState('workers');
     const [data, setData] = useState([]);
@@ -457,8 +411,8 @@ function App() {
             const fileContent = await importFile.text();
             const workers = JSON.parse(fileContent);
 
-            const response = await axiosInstance.post(
-                `/import/workers`,
+            const response = await axios.post(
+                `${API_BASE}/import/workers`,
                 workers,
                 {
                     headers: {
@@ -487,7 +441,7 @@ function App() {
 
     const loadImportHistory = async (page = 0, pageSize = 10) => {
         try {
-            const response = await axiosInstance.get(`/import/history`, {
+            const response = await axios.get(`${API_BASE}/import/history`, {
                 params: {
                     page: page,
                     size: pageSize,
@@ -502,6 +456,30 @@ function App() {
         } catch (e) {
             console.error(e);
             toast.error('Ошибка загрузки истории импорта');
+        }
+    };
+
+    const downloadImportFile = async (fileName) => {
+        if (!fileName) {
+            toast.error('Файл недоступен');
+            return;
+        }
+        try {
+            const response = await axios.get(`${API_BASE}/import/download/${fileName}`, {
+                responseType: 'blob'
+            });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', fileName);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            toast.success('Файл скачан');
+        } catch (e) {
+            console.error(e);
+            toast.error('Ошибка скачивания файла');
         }
     };
 
@@ -609,26 +587,6 @@ function App() {
     const currentColumns = columnConfigs[currentEntity] || columnConfigs.workers;
     const currentData = currentEntity === 'workers' ? workers : data;
 
-    // Если пользователь не авторизован, показываем страницу логина или регистрации
-    if (!user) {
-        return (
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <Toaster position="top-right" />
-                {authPage === 'login' ? (
-                    <Login
-                        onLogin={handleLogin}
-                        onSwitchToRegister={() => setAuthPage('register')}
-                    />
-                ) : (
-                    <Register
-                        onRegister={handleRegister}
-                        onSwitchToLogin={() => setAuthPage('login')}
-                    />
-                )}
-            </LocalizationProvider>
-        );
-    }
-
     return (
         <LocalizationProvider dateAdapter={AdapterDayjs}>
             <Toaster
@@ -651,22 +609,12 @@ function App() {
                     },
                 }}
             />
-            {/* Header с информацией о пользователе */}
+            {/* Header */}
             <AppBar position="static" sx={{ mb: 2 }}>
                 <Toolbar>
                     <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
                         Управление работниками
                     </Typography>
-                    <Typography sx={{ mr: 2 }}>
-                        {user.username}
-                    </Typography>
-                    <Button
-                        color="inherit"
-                        onClick={handleLogout}
-                        startIcon={<LogoutIcon />}
-                    >
-                        Выйти
-                    </Button>
                 </Toolbar>
             </AppBar>
             <Box p={4}>
@@ -1296,7 +1244,7 @@ function App() {
                 </DialogActions>
             </Dialog>
 
-            <Dialog open={importHistoryModalOpen} onClose={() => setImportHistoryModalOpen(false)} maxWidth="md" fullWidth>
+            <Dialog open={importHistoryModalOpen} onClose={() => setImportHistoryModalOpen(false)} maxWidth="lg" fullWidth>
                 <DialogTitle>История импорта</DialogTitle>
                 <DialogContent dividers>
                     {importHistory.length === 0 ? (
@@ -1308,9 +1256,9 @@ function App() {
                                     <TableRow>
                                         <TableCell>ID</TableCell>
                                         <TableCell>Дата и время</TableCell>
-                                        <TableCell>Пользователь</TableCell>
                                         <TableCell>Статус</TableCell>
                                         <TableCell>Добавлено</TableCell>
+                                        <TableCell>Файл</TableCell>
                                         <TableCell>Ошибка</TableCell>
                                     </TableRow>
                                 </TableHead>
@@ -1321,7 +1269,6 @@ function App() {
                                             <TableCell>
                                                 {new Date(record.timestamp).toLocaleString('ru-RU')}
                                             </TableCell>
-                                            <TableCell>{record.username || '-'}</TableCell>
                                             <TableCell>
                                                 <Chip
                                                     label={record.status}
@@ -1331,6 +1278,18 @@ function App() {
                                             </TableCell>
                                             <TableCell>
                                                 {record.status === 'SUCCESS' ? record.addedCount : '-'}
+                                            </TableCell>
+                                            <TableCell>
+                                                {record.fileName ? (
+                                                    <IconButton
+                                                        size="small"
+                                                        color="primary"
+                                                        onClick={() => downloadImportFile(record.fileName)}
+                                                        title="Скачать файл импорта"
+                                                    >
+                                                        <DownloadIcon />
+                                                    </IconButton>
+                                                ) : '-'}
                                             </TableCell>
                                             <TableCell sx={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                 {record.errorMessage || '-'}
