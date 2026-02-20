@@ -23,7 +23,6 @@ public class JaxRsActivator extends Application {
         resources.add(ru.itmo.controller.PersonController.class);
         resources.add(ru.itmo.controller.ImportController.class);
         resources.add(ru.itmo.controller.CacheController.class);
-        resources.add(ru.itmo.controller.TwoPhaseCommitTestController.class);
         return resources;
     }
 }

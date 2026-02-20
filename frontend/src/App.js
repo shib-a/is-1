@@ -733,24 +733,6 @@ function App() {
                         >
                             Clear Cache
                         </Button>
-                        <Button
-                            variant="contained"
-                            color="error"
-                            size="small"
-                            onClick={() => run2pcTest('db-failure')}
-                            disabled={test2pcLoading}
-                        >
-                            {test2pcLoading ? <CircularProgress size={20} /> : 'Test DB Fail'}
-                        </Button>
-                        <Button
-                            variant="contained"
-                            color="warning"
-                            size="small"
-                            onClick={() => run2pcTest('business-logic-failure')}
-                            disabled={test2pcLoading}
-                        >
-                            {test2pcLoading ? <CircularProgress size={20} /> : 'Test Logic Fail'}
-                        </Button>
                     </Box>
                 </Box>
 
@@ -772,39 +754,6 @@ function App() {
                 {/*    </Box>*/}
                 {/*)}*/}
 
-                {test2pcResult && (
-                    <Box sx={{
-                        padding: 1.5,
-                        backgroundColor: test2pcResult.testPassed ? '#e8f5e9' : '#ffebee',
-                        borderRadius: 1,
-                        marginBottom: 2,
-                        border: `2px solid ${test2pcResult.testPassed ? '#4caf50' : '#f44336'}`,
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: 1
-                    }}>
-                        {test2pcResult.testPassed ?
-                            <CheckCircleIcon sx={{ color: '#4caf50', marginTop: 0.5 }} /> :
-                            <ErrorIcon sx={{ color: '#f44336', marginTop: 0.5 }} />
-                        }
-                        <Box>
-                            <strong>{test2pcResult.testPassed ? '✓ Test PASSED' : '✗ Test FAILED'}</strong>
-                            <div>{test2pcResult.message}</div>
-                            {test2pcResult.testFileName && (
-                                <div style={{ fontSize: '0.85rem', marginTop: '5px', color: '#666' }}>
-                                    File: {test2pcResult.testFileName}
-                                </div>
-                            )}
-                        </Box>
-                        <Button
-                            size="small"
-                            onClick={() => setTest2pcResult(null)}
-                            sx={{ marginLeft: 'auto' }}
-                        >
-                            ✕
-                        </Button>
-                    </Box>
-                )}
 
                 <FormControl fullWidth sx={{ mb: 3 }}>
                     <InputLabel>Сущность</InputLabel>
