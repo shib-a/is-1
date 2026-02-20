@@ -5,11 +5,11 @@ import {
     Table, TableHead, TableBody, TableRow, TableCell, TablePagination, TableSortLabel,
     TextField, InputAdornment, Button, Dialog, DialogTitle, DialogContent, DialogActions,
     MenuItem, Select, InputLabel, FormControl, CircularProgress, Box, Typography, Grid,
-    Chip, IconButton, FormControlLabel, Checkbox, AppBar, Toolbar
+    Chip, IconButton, FormControlLabel, Checkbox, AppBar, Toolbar, Alert, Tabs, Tab
 } from '@mui/material';
 import {
     Search as SearchIcon, Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
-    Download as DownloadIcon
+    Download as DownloadIcon, Memory as MemoryIcon, CheckCircle as CheckCircleIcon, Error as ErrorIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -17,7 +17,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import dayjs from 'dayjs';
 import { Toaster, toast } from 'react-hot-toast';
 
-const API_BASE = 'http://localhost:8081/is-1-1.0-SNAPSHOT/api';
+const API_BASE = 'http://localhost:25203/is-1-1.0-SNAPSHOT/api';
 const POLLING_INTERVAL = 5000;
 
 function App() {
@@ -55,6 +55,13 @@ function App() {
     const [endDateSearchValue, setEndDateSearchValue] = useState(null);
     const [endDateCount, setEndDateCount] = useState(null);
 
+    const [cacheLoading, setCacheLoading] = useState(false);
+    const [cacheStats, setCacheStats] = useState(null);
+    const [cacheMessage, setCacheMessage] = useState(null);
+    const [test2pcResult, setTest2pcResult] = useState(null);
+    const [test2pcLoading, setTest2pcLoading] = useState(false);
+    const [currentTab, setCurrentTab] = useState(0);
+
     const openEditModal = (entity, type) => {
         setEditingEntity(entity);
         setEditingEntityType(type);
@@ -85,6 +92,75 @@ function App() {
             console.error(e);
             toast.error('Ошибка при удалении');
         }
+    };
+
+    const getCacheStats = async () => {
+        setCacheLoading(true);
+        try {
+            const response = await axios.get(`${API_BASE}/cache/stats`);
+            const data = response.data;
+            setCacheStats(data);
+            const hits = data.localHits !== undefined ? data.localHits : 0;
+            const misses = data.localMisses !== undefined ? data.localMisses : 0;
+            const logging = data.loggingEnabled ? 'ON' : 'OFF';
+            const size = data.cacheSize !== undefined ? data.cacheSize : 0;
+            setCacheMessage(`Hits: ${hits}, Misses: ${misses}, Size: ${size}, Logging: ${logging}`);
+            setTimeout(() => setCacheMessage(null), 5000);
+        } catch (error) {
+            setCacheMessage('Ошибка при получении статистики кэша');
+            setTimeout(() => setCacheMessage(null), 5000);
+            console.error('Cache stats error:', error);
+        }
+        setCacheLoading(false);
+    };
+
+    const toggleCacheLogging = async () => {
+        setCacheLoading(true);
+        try {
+            const endpoint = cacheStats?.loggingEnabled
+                ? `${API_BASE}/cache/logging/disable`
+                : `${API_BASE}/cache/logging/enable`;
+            const response = await axios.post(endpoint);
+            setCacheStats(response.data);
+            setCacheMessage(cacheStats?.loggingEnabled ? 'Логирование кэша отключено' : 'Логирование кэша включено');
+            setTimeout(() => setCacheMessage(null), 5000);
+        } catch (error) {
+            setCacheMessage('Ошибка при переключении логирования');
+            setTimeout(() => setCacheMessage(null), 5000);
+        }
+        setCacheLoading(false);
+    };
+
+    const clearCache = async () => {
+        setCacheLoading(true);
+        try {
+            await axios.post(`${API_BASE}/cache/clear`);
+            setCacheMessage('Кэш очищен');
+            setCacheStats(null);
+            setTimeout(() => setCacheMessage(null), 5000);
+        } catch (error) {
+            setCacheMessage('Ошибка при очистке кэша');
+            setTimeout(() => setCacheMessage(null), 5000);
+        }
+        setCacheLoading(false);
+    };
+
+    const run2pcTest = async (testType) => {
+        setTest2pcLoading(true);
+        try {
+            const endpoint = testType === 'db-failure'
+                ? `${API_BASE}/test/2pc/test-db-failure`
+                : `${API_BASE}/test/2pc/test-business-logic-failure`;
+            const response = await axios.post(endpoint);
+            setTest2pcResult(response.data);
+        } catch (error) {
+            setTest2pcResult({
+                status: 'ERROR',
+                message: error.message,
+                testPassed: false
+            });
+        }
+        setTest2pcLoading(false);
     };
 
 
@@ -618,6 +694,117 @@ function App() {
                 </Toolbar>
             </AppBar>
             <Box p={4}>
+
+                {/* Cache Management Panel */}
+                <Box sx={{
+                    padding: 2,
+                    backgroundColor: '#f5f5f5',
+                    borderRadius: 1,
+                    marginBottom: 2,
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 2,
+                    alignItems: 'center'
+                }}>
+                    <MemoryIcon sx={{ fontSize: 28, color: '#1976d2' }} />
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', flex: 1 }}>
+                        <Button
+                            variant="contained"
+                            size="small"
+                            onClick={getCacheStats}
+                            disabled={cacheLoading}
+                        >
+                            {cacheLoading ? <CircularProgress size={20} /> : 'Cache Stats'}
+                        </Button>
+                        <Button
+                            variant="contained"
+                            color={cacheStats?.loggingEnabled ? 'error' : 'success'}
+                            size="small"
+                            onClick={toggleCacheLogging}
+                            disabled={cacheLoading}
+                        >
+                            {cacheLoading ? <CircularProgress size={20} /> : (cacheStats?.loggingEnabled ? 'Disable Log' : 'Enable Log')}
+                        </Button>
+                        <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={clearCache}
+                            disabled={cacheLoading}
+                        >
+                            Clear Cache
+                        </Button>
+                        <Button
+                            variant="contained"
+                            color="error"
+                            size="small"
+                            onClick={() => run2pcTest('db-failure')}
+                            disabled={test2pcLoading}
+                        >
+                            {test2pcLoading ? <CircularProgress size={20} /> : 'Test DB Fail'}
+                        </Button>
+                        <Button
+                            variant="contained"
+                            color="warning"
+                            size="small"
+                            onClick={() => run2pcTest('business-logic-failure')}
+                            disabled={test2pcLoading}
+                        >
+                            {test2pcLoading ? <CircularProgress size={20} /> : 'Test Logic Fail'}
+                        </Button>
+                    </Box>
+                </Box>
+
+                {cacheMessage && (
+                    <Alert severity="info" sx={{ marginBottom: 2 }}>
+                        {cacheMessage}
+                    </Alert>
+                )}
+
+                {/*{cacheStats && (*/}
+                {/*    <Box sx={{*/}
+                {/*        padding: 1.5,*/}
+                {/*        backgroundColor: '#e3f2fd',*/}
+                {/*        borderRadius: 1,*/}
+                {/*        marginBottom: 2,*/}
+                {/*        fontSize: '0.9rem'*/}
+                {/*    }}>*/}
+                {/*        <strong>Cache Stats:</strong> Hits: {cacheStats.hits !== undefined ? cacheStats.hits : 0}, Misses: {cacheStats.misses !== undefined ? cacheStats.misses : 0}, Logging: {cacheStats.loggingEnabled ? '✓ ON' : '✗ OFF'}*/}
+                {/*    </Box>*/}
+                {/*)}*/}
+
+                {test2pcResult && (
+                    <Box sx={{
+                        padding: 1.5,
+                        backgroundColor: test2pcResult.testPassed ? '#e8f5e9' : '#ffebee',
+                        borderRadius: 1,
+                        marginBottom: 2,
+                        border: `2px solid ${test2pcResult.testPassed ? '#4caf50' : '#f44336'}`,
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 1
+                    }}>
+                        {test2pcResult.testPassed ?
+                            <CheckCircleIcon sx={{ color: '#4caf50', marginTop: 0.5 }} /> :
+                            <ErrorIcon sx={{ color: '#f44336', marginTop: 0.5 }} />
+                        }
+                        <Box>
+                            <strong>{test2pcResult.testPassed ? '✓ Test PASSED' : '✗ Test FAILED'}</strong>
+                            <div>{test2pcResult.message}</div>
+                            {test2pcResult.testFileName && (
+                                <div style={{ fontSize: '0.85rem', marginTop: '5px', color: '#666' }}>
+                                    File: {test2pcResult.testFileName}
+                                </div>
+                            )}
+                        </Box>
+                        <Button
+                            size="small"
+                            onClick={() => setTest2pcResult(null)}
+                            sx={{ marginLeft: 'auto' }}
+                        >
+                            ✕
+                        </Button>
+                    </Box>
+                )}
 
                 <FormControl fullWidth sx={{ mb: 3 }}>
                     <InputLabel>Сущность</InputLabel>

@@ -66,6 +66,234 @@
       }
     },
     "person": null
+  },
+  {
+    "name": "Анна Сидорова",
+    "salary": 75000,
+    "rating": 4.9,
+    "startDate": "2024-03-10",
+    "endDate": "2025-12-31",
+    "position": "LABORER",
+    "coordinates": {
+      "x": 200.1,
+      "y": 300.5
+    },
+    "organization": {
+      "annualTurnover": 5000000,
+      "employeesCount": 200,
+      "fullName": "ООО ТехноСтар",
+      "rating": 4.7,
+      "officialAddress": {
+        "street": "Невский проспект 100",
+        "town": {
+          "x": 20,
+          "y": 30,
+          "z": 40,
+          "name": "Санкт-Петербург"
+        }
+      }
+    },
+    "person": {
+      "eyeColor": "RED",
+      "hairColor": "RED",
+      "height": 165,
+      "passportID": "123456789012",
+      "nationality": "RUSSIA",
+      "location": {
+        "x": 10,
+        "y": 20,
+        "z": 30,
+        "name": "Дом"
+      }
+    }
+  },
+  {
+    "name": "Дмитрий Смирнов",
+    "salary": 45000,
+    "rating": 3.8,
+    "startDate": "2024-04-05",
+    "endDate": null,
+    "position": "LABORER",
+    "coordinates": {
+      "x": 50.2,
+      "y": 100.8
+    },
+    "organization": {
+      "annualTurnover": 1000000,
+      "employeesCount": 50,
+      "fullName": "ООО Рога и Копыта",
+      "rating": 4.2,
+      "officialAddress": {
+        "street": "Ленина 1",
+        "town": {
+          "x": 10,
+          "y": 20,
+          "z": 30,
+          "name": "Москва"
+        }
+      }
+    },
+    "person": {
+      "eyeColor": "YELLOW",
+      "hairColor": "BLACK",
+      "height": 175,
+      "passportID": "987654321098",
+      "nationality": "RUSSIA",
+      "location": {
+        "x": 5,
+        "y": 10,
+        "z": 15,
+        "name": "Офис"
+      }
+    }
+  },
+  {
+    "name": "Елена Козлова",
+    "salary": 82000,
+    "rating": 4.6,
+    "startDate": "2024-05-20",
+    "endDate": null,
+    "position": "HUMAN_RESOURCES",
+    "coordinates": {
+      "x": 120.4,
+      "y": 180.6
+    },
+    "organization": {
+      "annualTurnover": 3000000,
+      "employeesCount": 150,
+      "fullName": "ООО КлинСервис",
+      "rating": 4.3,
+      "officialAddress": {
+        "street": "Тверская 25",
+        "town": {
+          "x": 12,
+          "y": 22,
+          "z": 32,
+          "name": "Москва"
+        }
+      }
+    },
+    "person": {
+      "eyeColor": "BLACK",
+      "hairColor": "BLACK",
+      "height": 170,
+      "passportID": "555666777888",
+      "nationality": "RUSSIA",
+      "location": {
+        "x": 8,
+        "y": 16,
+        "z": 24,
+        "name": "Квартира"
+      }
+    }
+  },
+  {
+    "name": "Сергей Новиков",
+    "salary": 55000,
+    "rating": 4.1,
+    "startDate": "2024-06-15",
+    "endDate": null,
+    "position": "LABORER",
+    "coordinates": {
+      "x": 180.3,
+      "y": 220.7
+    },
+    "organization": {
+      "annualTurnover": 1500000,
+      "employeesCount": 75,
+      "fullName": "ООО ГлобалТех",
+      "rating": 4.0,
+      "officialAddress": {
+        "street": "Арбат 10",
+        "town": {
+          "x": 11,
+          "y": 21,
+          "z": 31,
+          "name": "Москва"
+        }
+      }
+    },
+    "person": {
+      "eyeColor": "BLACK",
+      "hairColor": "BLACK",
+      "height": 182,
+      "passportID": "111222333444",
+      "nationality": "UNITED_KINGDOM",
+      "location": {
+        "x": 3,
+        "y": 6,
+        "z": 9,
+        "name": "Гостиница"
+      }
+    }
+  },
+  {
+    "name": "Мария Волкова",
+    "salary": 68000,
+    "rating": 4.4,
+    "startDate": "2024-07-01",
+    "endDate": "2026-06-30",
+    "position": "HEAD_OF_DEPARTMENT",
+    "coordinates": {
+      "x": 90.5,
+      "y": 140.2
+    },
+    "organization": {
+      "annualTurnover": 2000000,
+      "employeesCount": 100,
+      "fullName": "ООО Новая Компания",
+      "rating": 4.5,
+      "officialAddress": {
+        "street": "Пушкина 5",
+        "town": {
+          "x": 15,
+          "y": 25,
+          "z": 35,
+          "name": "Санкт-Петербург"
+        }
+      }
+    },
+    "person": null
+  },
+  {
+    "name": "Алексей Морозов",
+    "salary": 95000,
+    "rating": 4.95,
+    "startDate": "2024-08-12",
+    "endDate": null,
+    "position": "LABORER",
+    "coordinates": {
+      "x": 250.8,
+      "y": 350.9
+    },
+    "organization": {
+      "annualTurnover": 10000000,
+      "employeesCount": 500,
+      "fullName": "ООО МегаКорп",
+      "rating": 4.8,
+      "officialAddress": {
+        "street": "Садовое кольцо 15",
+        "town": {
+          "x": 25,
+          "y": 35,
+          "z": 45,
+          "name": "Москва"
+        }
+      }
+    },
+    "person": {
+      "eyeColor": "YELLOW",
+      "hairColor": "ORANGE",
+      "height": 188,
+      "passportID": "999888777666",
+      "nationality": "RUSSIA",
+      "location": {
+        "x": 15,
+        "y": 30,
+        "z": 45,
+        "name": "Загородный дом"
+      }
+    }
   }
 ]
 

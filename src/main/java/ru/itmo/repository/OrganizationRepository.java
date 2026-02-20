@@ -109,6 +109,18 @@ public class OrganizationRepository {
         return query.getResultList();
     }
 
+    public List<Organization> findByFullName(String fullName) {
+        return entityManager.createQuery(
+                        "SELECT o FROM Organization o WHERE o.fullName = :fullName",
+                        Organization.class)
+                .setParameter("fullName", fullName)
+                .getResultList();
+    }
+
+    public List<Organization> findAll() {
+        return entityManager.createQuery("SELECT o FROM Organization o", Organization.class).getResultList();
+    }
+
     public void deleteWithReassign(Organization org, Organization target) {
         if (!org.getWorkers().isEmpty()) {
             org.getWorkers().forEach(w -> {

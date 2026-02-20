@@ -138,6 +138,18 @@ public class WorkerRepository {
                 .getResultList();
     }
 
+    public List<Worker> findByName(String name) {
+        return entityManager.createQuery(
+                        "SELECT w FROM Worker w WHERE w.name = :name",
+                        Worker.class)
+                .setParameter("name", name)
+                .getResultList();
+    }
+
+    public List<Worker> findAll() {
+        return entityManager.createQuery("SELECT w FROM Worker w", Worker.class).getResultList();
+    }
+
     public int updateSalaryForOrganization(Long organizationId, double coefficient) {
         int updated = entityManager.createQuery(
                         "UPDATE Worker w SET w.salary = w.salary * :coef " +

@@ -5,10 +5,8 @@ import jakarta.inject.Inject;
 import jakarta.interceptor.AroundInvoke;
 import jakarta.interceptor.Interceptor;
 import jakarta.interceptor.InvocationContext;
-import jakarta.persistence.EntityManager;
-import org.eclipse.persistence.internal.jpa.EntityManagerImpl;
-import org.eclipse.persistence.sessions.Session;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @CacheLogging
@@ -19,74 +17,53 @@ public class CacheLoggingInterceptor {
     private static final Logger LOGGER = Logger.getLogger(CacheLoggingInterceptor.class.getName());
 
     @Inject
-    private EntityManager entityManager;
-
-    @Inject
     private CacheStatisticsService cacheStatisticsService;
 
     @AroundInvoke
     public Object logCacheStatistics(InvocationContext context) throws Exception {
-        boolean loggingEnabled = cacheStatisticsService.isLoggingEnabled();
-
-        long cacheHitsBefore = 0;
-        long cacheMissesBefore = 0;
-
-        if (loggingEnabled) {
-            try {
-                Session session = getSession();
-                if (session != null) {
-                    cacheHitsBefore = getCacheHits(session);
-                    cacheMissesBefore = getCacheMisses(session);
-                }
-            } catch (Exception e) {
-                LOGGER.warning("Could not get cache statistics before: " + e.getMessage());
-            }
+        boolean loggingEnabled = false;
+        try {
+            loggingEnabled = cacheStatisticsService != null && cacheStatisticsService.isLoggingEnabled();
+        } catch (Exception e) {
+            return context.proceed();
         }
+
+        if (!loggingEnabled) {
+            return context.proceed();
+        }
+
+        long cachedObjectsBefore = 0;
+        try {
+            cachedObjectsBefore = cacheStatisticsService.getCacheHits();
+        } catch (Exception e) {
+            LOGGER.log(Level.FINE, "Could not get cache statistics before: " + e.getMessage());
+        }
+
         Object result = context.proceed();
 
-        if (loggingEnabled) {
-            try {
-                Session session = getSession();
-                if (session != null) {
-                    long cacheHitsAfter = getCacheHits(session);
-                    long cacheMissesAfter = getCacheMisses(session);
+        try {
+            long cachedObjectsAfter = cacheStatisticsService.getCacheHits();
+            long newCachedObjects = cachedObjectsAfter - cachedObjectsBefore;
 
-                    long newHits = cacheHitsAfter - cacheHitsBefore;
-                    long newMisses = cacheMissesAfter - cacheMissesBefore;
-
-                    LOGGER.info(String.format(
-                            "[L2 Cache Stats] Method: %s.%s | Cache Hits: %d (+%d) | Cache Misses: %d (+%d)",
-                            context.getTarget().getClass().getSimpleName(),
-                            context.getMethod().getName(),
-                            cacheHitsAfter, newHits,
-                            cacheMissesAfter, newMisses
-                    ));
-                }
-            } catch (Exception e) {
-                LOGGER.warning("Could not get cache statistics after: " + e.getMessage());
+            String className = context.getTarget().getClass().getSimpleName();
+            if (className.contains("$")) {
+                className = className.substring(0, className.indexOf("$"));
             }
+
+            CacheStatisticsService.CacheStats stats = cacheStatisticsService.getCurrentStats();
+
+            LOGGER.info(String.format(
+                    "[L2 Cache Stats] Method: %s.%s | Cached Objects: %d (+%d) | Details: %s",
+                    className,
+                    context.getMethod().getName(),
+                    cachedObjectsAfter, newCachedObjects,
+                    stats.getMessage()
+            ));
+        } catch (Exception e) {
+            LOGGER.log(Level.FINE, "Could not get cache statistics after: " + e.getMessage());
         }
 
         return result;
-    }
-
-    private Session getSession() {
-        try {
-            if (entityManager.getDelegate() instanceof EntityManagerImpl) {
-                return ((EntityManagerImpl) entityManager.getDelegate()).getServerSession();
-            }
-        } catch (Exception e) {
-            LOGGER.warning("Could not get session: " + e.getMessage());
-        }
-        return null;
-    }
-
-    private long getCacheHits(Session session) {
-        return cacheStatisticsService.getCacheHits();
-    }
-
-    private long getCacheMisses(Session session) {
-        return cacheStatisticsService.getCacheMisses();
     }
 }
 

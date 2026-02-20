@@ -13,7 +13,7 @@ public class MinioService {
 
     private static final Logger LOGGER = Logger.getLogger(MinioService.class.getName());
 
-    private static final String MINIO_ENDPOINT = System.getProperty("minio.endpoint", "http://localhost:9000");
+    private static final String MINIO_ENDPOINT = System.getProperty("minio.endpoint", "http://localhost:31167");
     private static final String MINIO_ACCESS_KEY = System.getProperty("minio.accessKey", "minioadmin");
     private static final String MINIO_SECRET_KEY = System.getProperty("minio.secretKey", "minioadmin");
     private static final String BUCKET_NAME = "import-files";
@@ -54,6 +54,7 @@ public class MinioService {
 
     public String uploadFile(String fileName, byte[] data) throws MinioException {
         if (!available) {
+            init();
             throw new MinioException("MinIO is not available");
         }
 
@@ -75,6 +76,7 @@ public class MinioService {
 
     public byte[] downloadFile(String fileName) throws MinioException {
         if (!available) {
+            init();
             throw new MinioException("MinIO is not available");
         }
 
@@ -90,6 +92,7 @@ public class MinioService {
 
     public void deleteFile(String fileName) throws MinioException {
         if (!available) {
+            init();
             throw new MinioException("MinIO is not available");
         }
 
@@ -106,6 +109,7 @@ public class MinioService {
 
     public boolean fileExists(String fileName) {
         if (!available) {
+            init();
             return false;
         }
 

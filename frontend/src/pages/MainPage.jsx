@@ -1,5 +1,6 @@
-import React, {useEffect, useState} from "react";
+import React, { useState, useEffect } from "react";
 import NestedTable from "../components/NestedTable";
+import CacheAndTestPanel from "../components/CacheAndTestPanel";
 import Coordinates from "../classes/Coordinates";
 import Worker from "../classes/Worker";
 import Organization from "../classes/Organization";
@@ -10,13 +11,20 @@ import Country from "../classes/Country";
 import Address from "../classes/Address";
 import Location from "../classes/Location";
 import axios from "axios";
-import { Dialog, DialogTitle, DialogContent, Button, Table, TableHead, TableRow, TableCell, TableBody, TextField, Select, MenuItem, Pagination } from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, Button, Table, TableHead, TableRow, TableCell, TableBody, TextField, Select, MenuItem, Pagination, Box, Tabs, Tab, CircularProgress, Alert } from "@mui/material";
+import { Memory as MemoryIcon, Settings as SettingsIcon, CheckCircle as CheckCircleIcon, Error as ErrorIcon } from '@mui/icons-material';
 
 const MainPage = () => {
 
     const [workers, setWorkers] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [currentTab, setCurrentTab] = useState(0);
+    const [cacheLoading, setCacheLoading] = useState(false);
+    const [cacheStats, setCacheStats] = useState(null);
+    const [cacheMessage, setCacheMessage] = useState(null);
+    const [test2pcResult, setTest2pcResult] = useState(null);
+    const [test2pcLoading, setTest2pcLoading] = useState(false);
 
     const [data, setData] = useState(null);
     const [expandedRowId, setExpandedRowId] = useState(null);
@@ -95,7 +103,7 @@ const MainPage = () => {
         currentCreatedWorker.startDate = startDate ? new Date(startDate) : null;
         currentCreatedWorker.endDate = endDate ? new Date(endDate) : null;
         await axios.post(
-            "http://localhost:8081/is-1-1.0-SNAPSHOT/workers/add",
+            "http://localhost:25203/is-1-1.0-SNAPSHOT/workers/add",
             currentCreatedWorker
         )
             .then(response =>{
@@ -120,7 +128,7 @@ const MainPage = () => {
         currentCreatedWorker.startDate = startDate ? new Date(startDate) : null;
         currentCreatedWorker.endDate = endDate ? new Date(endDate) : null;
         await axios.put(
-            `http://localhost:8081/is-1-1.0-SNAPSHOT/workers/edit`,
+            `http://localhost:25203/is-1-1.0-SNAPSHOT/workers/edit`,
     currentCreatedWorker
 )
 .then(response => {
@@ -134,7 +142,7 @@ const MainPage = () => {
 };
 
 const handleView = async (id) => {
-    await axios.get(`http://localhost:8081/is-1-1.0-SNAPSHOT/workers/${id}`)
+    await axios.get(`http://localhost:25203/is-1-1.0-SNAPSHOT/workers/${id}`)
         .then(response => {
             setSelectedWorker(response.data);
             setIsViewOpen(true);
@@ -150,7 +158,7 @@ const handleDelete = (id) => {
 };
 
 const handleDeleteConfirm = async () => {
-    await axios.delete(`http://localhost:8081/is-1-1.0-SNAPSHOT/workers/delete?id=${deleteId}`)
+    await axios.delete(`http://localhost:25203/is-1-1.0-SNAPSHOT/workers/delete?id=${deleteId}`)
         .then(response => {
             console.log(response);
             setIsDeleteConfirmOpen(false);
@@ -190,7 +198,7 @@ const handleReset = () => {
 
 const handleHireConfirm = async () => {
     await axios.post(
-        `http://localhost:8081/is-1-1.0-SNAPSHOT/workers/hire`,
+        `http://localhost:25203/is-1-1.0-SNAPSHOT/workers/hire`,
         {},
         { params: { workerId: hireWorkerId, organizationId: hireOrgId } }
     )
@@ -206,7 +214,7 @@ const handleHireConfirm = async () => {
 
 const handleMoveConfirm = async () => {
     await axios.post(
-        `http://localhost:8081/is-1-1.0-SNAPSHOT/workers/move`,
+        `http://localhost:25203/is-1-1.0-SNAPSHOT/workers/move`,
         {},
         { params: { workerId: moveWorkerId, newOrganizationId: moveNewOrgId } }
     )
@@ -220,15 +228,78 @@ const handleMoveConfirm = async () => {
         });
 };
 
+const getCacheStats = async () => {
+    setCacheLoading(true);
+    try {
+        const response = await axios.get('http://localhost:25203/is-1-1.0-SNAPSHOT/api/cache/stats');
+        setCacheStats(response.data);
+        setCacheMessage(`Hits: ${response.data.hits}, Misses: ${response.data.misses}, Logging: ${response.data.loggingEnabled ? 'ON' : 'OFF'}`);
+        setTimeout(() => setCacheMessage(null), 5000);
+    } catch (error) {
+        setCacheMessage('Ошибка при получении статистики кэша');
+        setTimeout(() => setCacheMessage(null), 5000);
+    }
+    setCacheLoading(false);
+};
+
+const toggleCacheLogging = async () => {
+    setCacheLoading(true);
+    try {
+        const endpoint = cacheStats?.loggingEnabled
+            ? 'http://localhost:25203/is-1-1.0-SNAPSHOT/api/cache/logging/disable'
+            : 'http://localhost:25203/is-1-1.0-SNAPSHOT/api/cache/logging/enable';
+        const response = await axios.post(endpoint);
+        setCacheStats(response.data);
+        setCacheMessage(cacheStats?.loggingEnabled ? 'Логирование кэша отключено' : 'Логирование кэша включено');
+        setTimeout(() => setCacheMessage(null), 5000);
+    } catch (error) {
+        setCacheMessage('Ошибка при переключении логирования');
+        setTimeout(() => setCacheMessage(null), 5000);
+    }
+    setCacheLoading(false);
+};
+
+const clearCache = async () => {
+    setCacheLoading(true);
+    try {
+        await axios.post('http://localhost:25203/is-1-1.0-SNAPSHOT/api/cache/clear');
+        setCacheMessage('Кэш очищен');
+        setCacheStats(null);
+        setTimeout(() => setCacheMessage(null), 5000);
+    } catch (error) {
+        setCacheMessage('Ошибка при очистке кэша');
+        setTimeout(() => setCacheMessage(null), 5000);
+    }
+    setCacheLoading(false);
+};
+
+const run2pcTest = async (testType) => {
+    setTest2pcLoading(true);
+    try {
+        const endpoint = testType === 'db-failure'
+            ? 'http://localhost:25203/is-1-1.0-SNAPSHOT/api/test/2pc/test-db-failure'
+            : 'http://localhost:25203/is-1-1.0-SNAPSHOT/api/test/2pc/test-business-logic-failure';
+        const response = await axios.post(endpoint);
+        setTest2pcResult(response.data);
+    } catch (error) {
+        setTest2pcResult({
+            status: 'ERROR',
+            message: error.message,
+            testPassed: false
+        });
+    }
+    setTest2pcLoading(false);
+};
+
 const fetchData = async (page) => {
     setLoading(true);
-    let url = `http://localhost:8081/is-1-1.0-SNAPSHOT/workers/get?page=${page}&size=${pageSize}`;
+    let url = `http://localhost:25203/is-1-1.0-SNAPSHOT/workers/get?page=${page}&size=${pageSize}`;
     if (searchType === 'name-contains') {
-        url = `http://localhost:8081/is-1-1.0-SNAPSHOT/workers/name-contains?substring=${searchParam}&page=${page}&size=${pageSize}`;
+        url = `http://localhost:25203/is-1-1.0-SNAPSHOT/workers/name-contains?substring=${searchParam}&page=${page}&size=${pageSize}`;
     } else if (searchType === 'name-starts') {
-        url = `http://localhost:8081/is-1-1.0-SNAPSHOT/workers/name-starts?substring=${searchParam}&page=${page}&size=${pageSize}`;
+        url = `http://localhost:25203/is-1-1.0-SNAPSHOT/workers/name-starts?substring=${searchParam}&page=${page}&size=${pageSize}`;
     } else if (searchType === 'rating-less') {
-        url = `http://localhost:8081/is-1-1.0-SNAPSHOT/workers/rating-less?rating=${searchParam}&page=${page}&size=${pageSize}`;
+        url = `http://localhost:25203/is-1-1.0-SNAPSHOT/workers/rating-less?rating=${searchParam}&page=${page}&size=${pageSize}`;
     }
     await axios.get(url)
         .then(response =>{
@@ -241,13 +312,13 @@ const fetchData = async (page) => {
 };
 
 const fetchCount = async () => {
-    let url = `http://localhost:8081/is-1-1.0-SNAPSHOT/workers/getTotalPages`;
+    let url = `http://localhost:25203/is-1-1.0-SNAPSHOT/workers/getTotalPages`;
     if (searchType === 'name-contains') {
-        url = `http://localhost:8081/is-1-1.0-SNAPSHOT/workers/name-contains/count?substring=${searchParam}`;
+        url = `http://localhost:25203/is-1-1.0-SNAPSHOT/workers/name-contains/count?substring=${searchParam}`;
     } else if (searchType === 'name-starts') {
-        url = `http://localhost:8081/is-1-1.0-SNAPSHOT/workers/name-starts/count?substring=${searchParam}`;
+        url = `http://localhost:25203/is-1-1.0-SNAPSHOT/workers/name-starts/count?substring=${searchParam}`;
     } else if (searchType === 'rating-less') {
-        url = `http://localhost:8081/is-1-1.0-SNAPSHOT/workers/rating-less/count?rating=${searchParam}`;
+        url = `http://localhost:25203/is-1-1.0-SNAPSHOT/workers/rating-less/count?rating=${searchParam}`;
     }
     await axios.get(url)
         .then(response => {
@@ -1098,6 +1169,132 @@ return (
                 <Button onClick={handleMoveConfirm}>Confirm</Button>
             </Dialog>
         )}
+        <Box sx={{ width: '100%', marginTop: 2 }}>
+            <Box sx={{
+                padding: 2,
+                backgroundColor: '#f5f5f5',
+                borderRadius: 1,
+                marginBottom: 2,
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 2,
+                alignItems: 'center'
+            }}>
+                <MemoryIcon sx={{ fontSize: 28, color: '#1976d2' }} />
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', flex: 1 }}>
+                    <Button
+                        variant="contained"
+                        size="small"
+                        onClick={getCacheStats}
+                        disabled={cacheLoading}
+                    >
+                        {cacheLoading ? <CircularProgress size={20} /> : 'Cache Stats'}
+                    </Button>
+                    <Button
+                        variant="contained"
+                        color={cacheStats?.loggingEnabled ? 'error' : 'success'}
+                        size="small"
+                        onClick={toggleCacheLogging}
+                        disabled={cacheLoading}
+                    >
+                        {cacheLoading ? <CircularProgress size={20} /> : (cacheStats?.loggingEnabled ? 'Disable Log' : 'Enable Log')}
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={clearCache}
+                        disabled={cacheLoading}
+                    >
+                        Clear Cache
+                    </Button>
+                    <Button
+                        variant="contained"
+                        color="error"
+                        size="small"
+                        onClick={() => run2pcTest('db-failure')}
+                        disabled={test2pcLoading}
+                    >
+                        {test2pcLoading ? <CircularProgress size={20} /> : 'Test DB Fail'}
+                    </Button>
+                    <Button
+                        variant="contained"
+                        color="warning"
+                        size="small"
+                        onClick={() => run2pcTest('business-logic-failure')}
+                        disabled={test2pcLoading}
+                    >
+                        {test2pcLoading ? <CircularProgress size={20} /> : 'Test Logic Fail'}
+                    </Button>
+                </Box>
+            </Box>
+
+            {cacheMessage && (
+                <Alert severity="info" sx={{ marginBottom: 2 }}>
+                    {cacheMessage}
+                </Alert>
+            )}
+
+            {cacheStats && (
+                <Box sx={{
+                    padding: 1.5,
+                    backgroundColor: '#e3f2fd',
+                    borderRadius: 1,
+                    marginBottom: 2,
+                    fontSize: '0.9rem'
+                }}>
+                    <strong>Cache Stats:</strong> Hits: {cacheStats.hits}, Misses: {cacheStats.misses}, Logging: {cacheStats.loggingEnabled ? '✓ ON' : '✗ OFF'}
+                </Box>
+            )}
+
+            {test2pcResult && (
+                <Box sx={{
+                    padding: 1.5,
+                    backgroundColor: test2pcResult.testPassed ? '#e8f5e9' : '#ffebee',
+                    borderRadius: 1,
+                    marginBottom: 2,
+                    border: `2px solid ${test2pcResult.testPassed ? '#4caf50' : '#f44336'}`,
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 1
+                }}>
+                    {test2pcResult.testPassed ?
+                        <CheckCircleIcon sx={{ color: '#4caf50', marginTop: 0.5 }} /> :
+                        <ErrorIcon sx={{ color: '#f44336', marginTop: 0.5 }} />
+                    }
+                    <Box>
+                        <strong>{test2pcResult.testPassed ? '✓ Test PASSED' : '✗ Test FAILED'}</strong>
+                        <div>{test2pcResult.message}</div>
+                        {test2pcResult.testFileName && (
+                            <div style={{ fontSize: '0.85rem', marginTop: '5px', color: '#666' }}>
+                                File: {test2pcResult.testFileName}
+                            </div>
+                        )}
+                    </Box>
+                    <Button
+                        size="small"
+                        onClick={() => setTest2pcResult(null)}
+                        sx={{ marginLeft: 'auto' }}
+                    >
+                        ✕
+                    </Button>
+                </Box>
+            )}
+
+            <Tabs
+                value={currentTab}
+                onChange={(e, newValue) => setCurrentTab(newValue)}
+                sx={{ borderBottom: 1, borderColor: 'divider' }}
+            >
+                <Tab label="Workers" />
+                <Tab label="Cache & Tests" />
+            </Tabs>
+            <Box sx={{ display: currentTab === 0 ? 'block' : 'none', marginTop: 2 }}>
+                <NestedTable data={data} />
+            </Box>
+            <Box sx={{ display: currentTab === 1 ? 'block' : 'none', marginTop: 2 }}>
+                <CacheAndTestPanel />
+            </Box>
+        </Box>
     </div>)
 }
 export default MainPage;
